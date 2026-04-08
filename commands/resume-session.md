@@ -1,6 +1,6 @@
 Before starting any new work, read these files for context:
 
-PROJECT RESOLUTION: Determine the current project name from the working directory's repo name (e.g., if cwd is inside `langflow` or `langflow-wxo-fe`, project = "langflow"; if `anima-virtus`, project = "anima-virtus"). Use this as <PROJECT> below. The vault base is "/Users/viktoravelino/Documents/Obsidian Vault".
+PROJECT RESOLUTION: Determine the current project name from the working directory's repo name (e.g., if cwd is inside `langflow` or `langflow-wxo-fe`, project = "langflow"; if `anima-virtus`, project = "anima-virtus"). Use this as <PROJECT> below. The vault base is "~/Documents/Obsidian Vault".
 
 1. "<vault>/CLAUDE.md" — focus on the Active Context section
 2. The 3 most recent files in "<vault>/projects/<PROJECT>/sessions/"

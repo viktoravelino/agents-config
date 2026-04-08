@@ -1,6 +1,6 @@
 Help me prepare my annual performance review for IBM SuccessFactors.
 
-The vault base is "/Users/viktoravelino/Documents/Obsidian Vault".
+The vault base is "~/Documents/Obsidian Vault".
 
 Read ALL of the following from my Obsidian vault:
 1. Every daily note in "<vault>/projects/" (all subfolders under daily/) for the current year

@@ -1,6 +1,6 @@
 Write a session log, save learnings, and update my daily notes. Do all four steps:
 
-PROJECT RESOLUTION: Determine the current project name from the working directory's repo name (e.g., if cwd is inside `langflow` or `langflow-wxo-fe`, project = "langflow"; if `anima-virtus`, project = "anima-virtus"). Use this as <PROJECT> below. The vault base is "/Users/viktoravelino/Documents/Obsidian Vault".
+PROJECT RESOLUTION: Determine the current project name from the working directory's repo name (e.g., if cwd is inside `langflow` or `langflow-wxo-fe`, project = "langflow"; if `anima-virtus`, project = "anima-virtus"). Use this as <PROJECT> below. The vault base is "~/Documents/Obsidian Vault".
 
 STEP 1: Create a session log at "<vault>/projects/<PROJECT>/sessions/"
 Filename: YYYY-MM-DD-brief-topic-slug.md (use today's date)
@@ -102,7 +102,7 @@ tags: [daily]
 ## Collaboration
 -
 
-STEP 4: Update "/Users/viktoravelino/Documents/Obsidian Vault/CLAUDE.md"
+STEP 4: Update "~/Documents/Obsidian Vault/CLAUDE.md"
 - Rewrite the "Active Context" section with current state for tomorrow's session
 
 Be specific. Use actual file paths, function names, and error messages. Don't summarize — document.
