@@ -1,6 +1,9 @@
 ## Available Skills
 
 - **git-worktree** — Manage Git worktrees: create from local/remote/new branches, list active worktrees, delete, prune, and switch between them. Ideal for working on multiple branches simultaneously without stashing changes.
+- **caveman** — Ultra-compressed communication mode. Use for terse, low-fluff responses while preserving technical accuracy.
+- **caveman-commit** — Generate terse Conventional Commit messages with minimal noise and clear rationale.
+- **review-frontend** — Review frontend diffs or PR changes with React/TypeScript/UI focus. Output terse, actionable findings with bug/risk/nit labels and suggested changes.
 
 ## Default Style
 
@@ -17,3 +20,9 @@ If the `caveman` skill is not available, apply the same style directly:
 - prefer short sentences
 - keep technical accuracy exact
 - expand only when brevity would reduce clarity
+
+## Environment
+
+GitHub CLI (`gh`) is available in this environment.
+
+Use it when PR context, PR metadata, PR base branch, review comments, or GitHub-specific workflow details are needed.
