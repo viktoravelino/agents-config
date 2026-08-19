@@ -31,6 +31,11 @@ Use this skill when the user wants to:
 - Project name extracted using: `basename "$(git rev-parse --show-toplevel)"`
 - Example: `myproject-feature-auth`, `myapp-bugfix-login`
 
+**Environment File**: Always copy repo-root `.env` into new worktree
+- After every successful worktree creation, copy: `cp .env ../<project>-<branch>/.env`
+- Source `.env` is the main repository root where the command is run
+- If `.env` is missing, warn clearly instead of failing the worktree creation
+
 ### Interface
 
 **Hybrid Mode**: Accepts arguments when provided, prompts when missing
@@ -98,12 +103,14 @@ Git Worktrees for myproject:
 6. Verify remote branch exists (check exit code)
 7. Determine worktree path: `../<project>-<branch-name>`
 8. Create worktree: `git worktree add ../<project>-<branch-name> origin/<branch-name>`
-9. Show success message with path and navigation command
+9. Copy environment file: `cp .env ../<project>-<branch-name>/.env`
+10. Show success message with path and navigation command
 
 **Error handling**:
 - Not in git repo: Show clear error message
 - Worktree already exists: "Worktree for branch 'X' already exists at Y. Use 'list' to see all worktrees."
 - Remote branch doesn't exist: "Remote branch 'origin/X' not found. Available branches: [list]"
+- `.env` missing: "Worktree created, but `.env` not found in repo root so it was not copied."
 
 **Success output**:
 ```
@@ -111,6 +118,7 @@ Git Worktrees for myproject:
 
 Location: ~/projects/myproject-feature-x
 Branch: feature-x (tracking origin/feature-x)
+.env: copied from main repo root
 
 To switch to this worktree:
   cd ../myproject-feature-x
@@ -129,11 +137,13 @@ To start working:
 3. Verify local branch exists: `git rev-parse --verify <branch-name>`
 4. Check if worktree already exists
 5. Create worktree: `git worktree add ../<project>-<branch-name> <branch-name>`
-6. Show success message with navigation
+6. Copy environment file: `cp .env ../<project>-<branch-name>/.env`
+7. Show success message with navigation
 
 **Error handling**:
 - Local branch doesn't exist: "Local branch 'X' not found. Available branches: [list local branches]"
 - Worktree already exists: Same as remote case
+- `.env` missing: "Worktree created, but `.env` not found in repo root so it was not copied."
 
 ### 4. Create Worktree with New Branch
 
@@ -149,7 +159,8 @@ To start working:
 3. Get base branch (use current if not specified)
 4. Check if worktree directory already exists
 5. Create worktree with new branch: `git worktree add -b <new-branch> ../<project>-<new-branch> <base-branch>`
-6. Show success message
+6. Copy environment file: `cp .env ../<project>-<new-branch>/.env`
+7. Show success message
 
 **Success output**:
 ```
@@ -157,10 +168,14 @@ To start working:
 
 Location: ~/projects/myproject-experiment-auth
 Branch: experiment-auth (based on main)
+.env: copied from main repo root
 
 To switch to this worktree:
   cd ../myproject-experiment-auth
 ```
+
+**Error handling**:
+- `.env` missing: "Worktree created, but `.env` not found in repo root so it was not copied."
 
 ### 5. Delete Worktree
 
