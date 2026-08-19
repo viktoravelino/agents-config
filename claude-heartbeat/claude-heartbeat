@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+#
+# claude-heartbeat — keeps Claude Code's 5-hour usage blocks chained end-to-end.
+#
+# The 5h block is a FIXED window, not a sliding one: it starts on your first
+# message after the previous block expired and dies exactly 5h later. This
+# script fires one minimal message the moment a block expires, so a fresh block
+# is always running and resets never drift into the middle of a work session.
+#
+# It is a no-op unless the current block has actually expired, so it costs
+# ~5 real requests/day even though the timer runs every 5 minutes.
+#
+set -uo pipefail
+
+BLOCK_SECONDS=$((5 * 3600))
+CLAUDE_BIN="$HOME/.local/bin/claude"
+PROJECTS="$HOME/.claude/projects"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/claude-heartbeat"
+PING_LOG="$STATE_DIR/pings"       # ISO8601 UTC, one per line — our own activity
+LOCK="$STATE_DIR/lock"
+RUN_DIR="$STATE_DIR/cwd"          # empty dir: no CLAUDE.md, no git, no project settings
+
+mkdir -p "$RUN_DIR"
+
+# The stored OAuth grant in ~/.claude/.credentials.json can go stale and stops
+# refreshing; the long-lived `claude setup-token` token is what makes headless
+# runs reliable. systemd usually inherits it, but load it explicitly so this
+# works under cron, a bare shell, or a stale user manager environment too.
+if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -f "$HOME/.config/environment.d/claude-code.conf" ]; then
+  set -a; . "$HOME/.config/environment.d/claude-code.conf"; set +a
+fi
+
+# Never let a hung invocation stack up behind the next timer tick.
+exec 9>"$LOCK"
+flock -n 9 || { echo "another run in progress; skipping"; exit 0; }
+
+force=0
+[ "${1:-}" = "--force" ] && force=1
+
+now=$(date +%s)
+
+# Every activity timestamp from the last 48h: real sessions plus our own pings.
+# Pings are logged separately because --no-session-persistence means they never
+# land in ~/.claude/projects — without this the script would re-ping forever.
+timestamps() {
+  /usr/bin/find "$PROJECTS" -name '*.jsonl' -newermt '48 hours ago' -print0 2>/dev/null \
+    | xargs -0 -r grep -ho '"timestamp":"[^"]*"' 2>/dev/null \
+    | cut -d'"' -f4
+  [ -f "$PING_LOG" ] && tail -n 200 "$PING_LOG"
+}
+
+# Replay the blocks forward: a new block begins at the first message at or after
+# the current block's expiry. Handles both idle gaps and back-to-back sessions.
+block_start=$(
+  timestamps | sort -u \
+    | jq -rR 'select(test("^[0-9]{4}-")) | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601' 2>/dev/null \
+    | sort -n \
+    | awk -v block="$BLOCK_SECONDS" -v now="$now" '
+        $1 <= now { if (start == "" || $1 >= start + block) start = $1 }
+        END { if (start != "") print start }'
+)
+
+if [ -n "$block_start" ]; then
+  expires=$((block_start + BLOCK_SECONDS))
+  if [ "$now" -lt "$expires" ] && [ "$force" -eq 0 ]; then
+    echo "block active until $(date -d "@$expires" '+%H:%M:%S') — no ping needed"
+    exit 0
+  fi
+  if [ "$force" -eq 1 ]; then
+    echo "--force: pinging even though the block runs to $(date -d "@$expires" '+%H:%M:%S')"
+  else
+    echo "block expired at $(date -d "@$expires" '+%F %H:%M:%S') — starting a new one"
+  fi
+else
+  echo "no recent activity found — starting a new block"
+fi
+
+# The cheapest possible message that still opens a block.
+#   --safe-mode            disables CLAUDE.md, hooks, MCP, skills, plugins, agents,
+#                          but keeps OAuth auth working (--bare would force an API key,
+#                          which bills separately and does nothing for the subscription)
+#   --setting-sources ""   ignore user/project/local settings.json
+#   --tools ""             no tool schemas in the prompt — this is the big token saver
+#   --system-prompt        replaces the multi-thousand-token default system prompt
+out=$(cd "$RUN_DIR" && "$CLAUDE_BIN" -p "ping" \
+  --model haiku \
+  --effort low \
+  --safe-mode \
+  --setting-sources "" \
+  --tools "" \
+  --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+  --disable-slash-commands \
+  --no-session-persistence \
+  --max-turns 1 \
+  --system-prompt "Reply with exactly: ok" \
+  --output-format json 2>&1)
+
+if printf '%s' "$out" | jq -e '.is_error == false' >/dev/null 2>&1; then
+  date -u '+%Y-%m-%dT%H:%M:%SZ' >> "$PING_LOG"
+  in_tok=$(printf '%s' "$out" | jq -r '[.usage.input_tokens, .usage.cache_creation_input_tokens, .usage.cache_read_input_tokens] | add')
+  out_tok=$(printf '%s' "$out" | jq -r '.usage.output_tokens')
+  echo "ok — pinged at $(date '+%H:%M:%S') (${in_tok} in / ${out_tok} out)"
+  tail -n 200 "$PING_LOG" > "$PING_LOG.tmp" && mv "$PING_LOG.tmp" "$PING_LOG"
+else
+  echo "PING FAILED: $(printf '%s' "$out" | jq -r '.result // .' 2>/dev/null | head -c 300)"
+  exit 1
+fi
