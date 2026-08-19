@@ -1,0 +1,10 @@
+[Unit]
+Description=Chain Claude Code 5-hour usage blocks
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/claude-heartbeat
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# A ping should take seconds; anything longer is hung.
+TimeoutStartSec=120

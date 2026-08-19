@@ -1,0 +1,14 @@
+[Unit]
+Description=Check every 5 minutes whether the Claude block needs renewing
+
+[Timer]
+OnCalendar=*:0/5
+# Fire immediately after resume/boot if a tick was missed while asleep —
+# this is the whole reason to prefer a timer over cron on a laptop.
+Persistent=true
+AccuracySec=30s
+# For quiet hours instead, replace OnCalendar above with e.g.:
+#   OnCalendar=06..23:0/5
+
+[Install]
+WantedBy=timers.target
