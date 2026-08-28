@@ -23,11 +23,21 @@ I wanted to share some of my preferences and expectations for our collaboration.
 - Avoid one-line functions that are just casting wrappers.
 - Write TypeScript in ways that Matt Pocock and Theo would be proud of.
   
-## Coding preferences - TypeScript
+## Coding preferences - General
+
 - A question is a request for an answer, not for changes. If the message opens with "how hard would it be", "what are your thoughts", "why does", "should we", "is it possible", "can X do Y", or otherwise asks rather then instructs: answer it, and do not edit files.
 - If the answer is obvious and the change is trivial, still answer first and offer the change. Ask before making it.
 
+## Commits preferences
+
+**What NEVER goes in:**
+- "As requested by..." - use Co-authored-by trailer
+- "Generated with Claude Code" or any AI attribution
+- Emoji (unless project convention requires)
+- Restating the file name when scope already says it
+
 ## March ceremony to the task
+
 - Do not spawn subagents or a multi-agent panel for work a single agent finished in one pass. Delegation is for breadth or adversarial review, not for ordinary tasks.
 - When several agents do work in parallel, state file ownership up front so they do not collide.
 
@@ -38,3 +48,4 @@ GitHub CLI (`gh`) is available in this environment.
 Use it when PR context, PR metadata, PR base branch, review comments, or GitHub-specific workflow details are needed.
 
 Atlassian CLI (`acli`) may also be available for Jira work. Use it when Jira ticket context, JQL search, ticket updates, or board/project metadata are needed.
+
