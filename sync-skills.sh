@@ -8,7 +8,7 @@
 #
 #   sync-skills.sh check  [name...]              report drift, touch nothing
 #   sync-skills.sh update [name...] [--force]    pull upstream in, bump the pin
-#   sync-skills.sh add <repo> <path> [--as name] [--ref ref]
+#   sync-skills.sh add <repo> <path> [--as name] [--ref ref] [--track | --no-track]
 #   sync-skills.sh remove <name> [--keep | --delete]
 #
 # Upstreams are fetched into blob-less bare clones under
@@ -27,6 +27,7 @@ FORCE=0
 ADD_NAME=""
 ADD_REF="main"
 REMOVE_MODE=""
+ADD_MODE=""
 NAMES=()
 POSITIONAL=()
 
@@ -39,7 +40,7 @@ usage() {
   echo "Commands:"
   echo "  check  [name...]           report skills behind upstream or edited locally"
   echo "  update [name...]           copy upstream in and bump the pinned commit"
-  echo "  add <repo> <path>          vendor a new skill and record where it came from"
+  echo "  add <repo> <path>          copy a skill in; asks whether to track its source"
   echo "  remove <name>              stop tracking a skill; asks whether to keep the files"
   echo
   echo "Options:"
@@ -47,6 +48,8 @@ usage() {
   echo "      --force                update even when the local copy has edits"
   echo "      --as <name>            (add) directory name, defaults to basename of <path>"
   echo "      --ref <ref>            (add) branch or tag to follow, defaults to main"
+  echo "      --track                (add) record the source so check/update see it"
+  echo "      --no-track             (add) copy only; the skill counts as authored here"
   echo "      --keep                 (remove) drop the manifest entry, keep the files"
   echo "      --delete               (remove) drop the manifest entry and delete the files"
   echo "  -h, --help                 show this help"
@@ -73,6 +76,13 @@ while [ $# -gt 0 ]; do
     --ref)
       [ $# -ge 2 ] || { echo "--ref needs a value" >&2; exit 1; }
       ADD_REF="$2"; shift
+      ;;
+    --track|--no-track)
+      if [ -n "$ADD_MODE" ] && [ "$ADD_MODE" != "${1#--}" ]; then
+        echo "--track and --no-track are mutually exclusive" >&2
+        exit 1
+      fi
+      ADD_MODE="${1#--}"
       ;;
     --keep|--delete)
       if [ -n "$REMOVE_MODE" ] && [ "$REMOVE_MODE" != "${1#--}" ]; then
@@ -436,8 +446,32 @@ cmd_update() {
   [ "$errors" -eq 0 ]
 }
 
+# Asks whether to record the source. Sets ADD_MODE to track or no-track;
+# exits without changing anything on any other answer.
+ask_add_mode() {
+  local name="$1" answer
+
+  if [ ! -t 0 ]; then
+    echo "Not a terminal: pass --track or --no-track to say whether shared/skills/$name follows its source" >&2
+    exit 1
+  fi
+
+  printf '  1) copy + track     record the source so check/update keep shared/skills/%s in sync\n' "$name"
+  printf '  2) copy only        take the files once; shared/skills/%s counts as authored here\n\n' "$name"
+  printf '%sChoose [1/2, anything else aborts]:%s ' "$BOLD" "$RESET"
+  # EOF (Ctrl-D) counts as "anything else".
+  read -r answer || answer=""
+
+  case "$answer" in
+    1) ADD_MODE="track" ;;
+    2) ADD_MODE="no-track" ;;
+    *) echo "Aborted, nothing changed."; exit 0 ;;
+  esac
+  printf '\n'
+}
+
 cmd_add() {
-  local repo path name head
+  local repo path name head verb
 
   if [ "${#POSITIONAL[@]}" -ne 2 ]; then
     echo "Usage: ${BASH_SOURCE[0]##*/} add <repo> <path> [--as name] [--ref ref]" >&2
@@ -487,19 +521,31 @@ cmd_add() {
     exit 1
   fi
 
-  if [ "$DRY_RUN" -eq 0 ]; then
-    extract_skill "$(cache_for "$repo")" "$head" "$path" "$name"
-    write_manifest_entry "$name" "$repo" "$path" "$ADD_REF" "$head"
+  if [ -z "$ADD_MODE" ]; then
+    ask_add_mode "$name"
   fi
 
-  status_line "$GREEN" "+" "$name" \
-    "$([ "$DRY_RUN" -eq 1 ] && echo "would vendor" || echo "vendored") $path @ ${head:0:7} -> shared/skills/$name"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    extract_skill "$(cache_for "$repo")" "$head" "$path" "$name"
+    if [ "$ADD_MODE" = "track" ]; then
+      write_manifest_entry "$name" "$repo" "$path" "$ADD_REF" "$head"
+    fi
+  fi
+
+  verb="copied"; [ "$DRY_RUN" -eq 1 ] && verb="would copy"
+  if [ "$ADD_MODE" = "track" ]; then
+    status_line "$GREEN" "+" "$name" "$verb $path @ ${head:0:7} -> shared/skills/$name, tracking $(pretty_repo "$repo")"
+  else
+    status_line "$GREEN" "+" "$name" "$verb $path @ ${head:0:7} -> shared/skills/$name, not tracked"
+  fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '\n%sDry run%s %snothing written%s\n' "$BOLD" "$RESET" "$DIM" "$RESET"
-  else
+  elif [ "$ADD_MODE" = "track" ]; then
     printf '\n%sDone%s %sRun ./install.sh to link it, then commit the skill and the manifest together.%s\n' \
       "$BOLD" "$RESET" "$DIM" "$RESET"
+  else
+    printf '\n%sDone%s %sRun ./install.sh to link it, then commit the skill.%s\n' "$BOLD" "$RESET" "$DIM" "$RESET"
   fi
 }
 
