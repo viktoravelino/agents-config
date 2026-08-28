@@ -28,6 +28,7 @@ records the repo, path, ref, and the upstream commit each copy was taken from.
 ./sync-skills.sh check                 # anything behind upstream or edited locally?
 ./sync-skills.sh update handbill       # pull upstream in and bump the pin
 ./sync-skills.sh add <repo> <path>     # vendor a new skill and record its source
+./sync-skills.sh remove <name>         # stop tracking; asks whether to keep or delete the files
 ```
 
 `check` lists the upstream commits that touched the skill since the pin and
@@ -37,7 +38,9 @@ the manifest together. A local edit blocks `update` until you either move it
 upstream or pass `--force`. Upstreams are cached as small bare clones under
 `~/.cache/agents-config/skills`; the cache is disposable.
 
-Skills without a manifest entry are authored here.
+`remove` drops the manifest entry and asks whether the directory stays (it
+becomes a skill authored here) or goes; `--keep` / `--delete` answer that
+non-interactively. Skills without a manifest entry are authored here.
 
 ## Also here
 

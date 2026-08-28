@@ -9,6 +9,7 @@
 #   sync-skills.sh check  [name...]              report drift, touch nothing
 #   sync-skills.sh update [name...] [--force]    pull upstream in, bump the pin
 #   sync-skills.sh add <repo> <path> [--as name] [--ref ref]
+#   sync-skills.sh remove <name> [--keep | --delete]
 #
 # Upstreams are fetched into blob-less bare clones under
 # ~/.cache/agents-config/skills; the cache is disposable.
@@ -25,6 +26,7 @@ DRY_RUN=0
 FORCE=0
 ADD_NAME=""
 ADD_REF="main"
+REMOVE_MODE=""
 NAMES=()
 POSITIONAL=()
 
@@ -38,12 +40,15 @@ usage() {
   echo "  check  [name...]           report skills behind upstream or edited locally"
   echo "  update [name...]           copy upstream in and bump the pinned commit"
   echo "  add <repo> <path>          vendor a new skill and record where it came from"
+  echo "  remove <name>              stop tracking a skill; asks whether to keep the files"
   echo
   echo "Options:"
   echo "  -n, --dry-run              show what would change, touch nothing"
   echo "      --force                update even when the local copy has edits"
   echo "      --as <name>            (add) directory name, defaults to basename of <path>"
   echo "      --ref <ref>            (add) branch or tag to follow, defaults to main"
+  echo "      --keep                 (remove) drop the manifest entry, keep the files"
+  echo "      --delete               (remove) drop the manifest entry and delete the files"
   echo "  -h, --help                 show this help"
   echo
   echo "check exits non-zero when anything is behind, modified, or broken."
@@ -52,7 +57,7 @@ usage() {
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    check|update|add)
+    check|update|add|remove)
       if [ -n "$COMMAND" ]; then
         echo "Only one command allowed, got '$COMMAND' and '$1'" >&2
         exit 1
@@ -68,6 +73,13 @@ while [ $# -gt 0 ]; do
     --ref)
       [ $# -ge 2 ] || { echo "--ref needs a value" >&2; exit 1; }
       ADD_REF="$2"; shift
+      ;;
+    --keep|--delete)
+      if [ -n "$REMOVE_MODE" ] && [ "$REMOVE_MODE" != "${1#--}" ]; then
+        echo "--keep and --delete are mutually exclusive" >&2
+        exit 1
+      fi
+      REMOVE_MODE="${1#--}"
       ;;
     -h|--help) usage; exit 0 ;;
     -*)
@@ -491,8 +503,97 @@ cmd_add() {
   fi
 }
 
+delete_manifest_entry() {
+  local name="$1" tmp
+
+  tmp="$(mktemp)"
+  jq --arg n "$name" 'del(.[$n])' "$MANIFEST" > "$tmp"
+  mv "$tmp" "$MANIFEST"
+}
+
+# Asks whether to keep the files. Sets REMOVE_MODE to keep or delete;
+# exits without changing anything on any other answer.
+ask_remove_mode() {
+  local name="$1" answer
+
+  if [ ! -t 0 ]; then
+    echo "Not a terminal: pass --keep or --delete to say what happens to shared/skills/$name" >&2
+    exit 1
+  fi
+
+  printf '  1) untrack only     drop the manifest entry, keep shared/skills/%s as a skill authored here\n' "$name"
+  printf '  2) untrack + delete drop the manifest entry and delete shared/skills/%s\n\n' "$name"
+  printf '%sChoose [1/2, anything else aborts]:%s ' "$BOLD" "$RESET"
+  # EOF (Ctrl-D) counts as "anything else".
+  read -r answer || answer=""
+
+  case "$answer" in
+    1) REMOVE_MODE="keep" ;;
+    2) REMOVE_MODE="delete" ;;
+    *) echo "Aborted, nothing changed."; exit 0 ;;
+  esac
+  printf '\n'
+}
+
+cmd_remove() {
+  local name repo path verb
+
+  if [ "${#POSITIONAL[@]}" -ne 1 ]; then
+    echo "Usage: ${BASH_SOURCE[0]##*/} remove <name> [--keep | --delete]" >&2
+    exit 1
+  fi
+
+  name="${POSITIONAL[0]}"
+  require_manifest
+
+  if ! jq -e --arg n "$name" 'has($n)' "$MANIFEST" >/dev/null; then
+    printf '%sNot an external skill: %s%s (no entry in %s)\n' \
+      "$RED" "$name" "$RESET" "$(pretty_path "$MANIFEST")" >&2
+    exit 1
+  fi
+
+  repo="$(manifest_field "$name" repo || echo "?")"
+  path="$(manifest_field "$name" path || echo "?")"
+  track_name_width "$name"
+
+  printf '%sRemoving external skill%s %s%s · %s%s' \
+    "$BOLD" "$RESET" "$DIM" "$(pretty_repo "$repo")" "$path" "$RESET"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf ' %s(dry run)%s' "$BLUE" "$RESET"
+  fi
+  printf '\n\n'
+
+  if [ -z "$REMOVE_MODE" ]; then
+    ask_remove_mode "$name"
+  fi
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    delete_manifest_entry "$name"
+    if [ "$REMOVE_MODE" = "delete" ]; then
+      rm -rf "$SKILLS_DIR/$name"
+    fi
+  fi
+
+  verb="untracked"; [ "$DRY_RUN" -eq 1 ] && verb="would untrack"
+  if [ "$REMOVE_MODE" = "delete" ]; then
+    status_line "$RED" "-" "$name" "$verb and $([ "$DRY_RUN" -eq 1 ] && echo "would delete" || echo "deleted") shared/skills/$name"
+  else
+    status_line "$YELLOW" "-" "$name" "$verb; shared/skills/$name stays as a skill authored here"
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '\n%sDry run%s %snothing written%s\n' "$BOLD" "$RESET" "$DIM" "$RESET"
+  elif [ "$REMOVE_MODE" = "delete" ]; then
+    printf '\n%sDone%s %sRun ./install.sh to drop its links, then commit the deletion and the manifest together.%s\n' \
+      "$BOLD" "$RESET" "$DIM" "$RESET"
+  else
+    printf '\n%sDone%s %sCommit the manifest.%s\n' "$BOLD" "$RESET" "$DIM" "$RESET"
+  fi
+}
+
 case "$COMMAND" in
   check) cmd_check ;;
   update) cmd_update ;;
   add) cmd_add ;;
+  remove) cmd_remove ;;
 esac
