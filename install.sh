@@ -37,6 +37,10 @@ for arg in "$@"; do
       echo "longer exists are removed. Anything not managed by this script is"
       echo "left alone, and existing real files are backed up before linking."
       echo
+      echo "Skills copied from other repositories are tracked in"
+      echo "shared/skill-sources.json; use ./sync-skills.sh to check for and"
+      echo "pull in upstream changes."
+      echo
       echo "  -n, --dry-run           show what would change, touch nothing"
       echo "      --skills-only       skip the instructions file"
       echo "      --instructions-only skip skills"
