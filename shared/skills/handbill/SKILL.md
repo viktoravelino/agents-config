@@ -22,7 +22,7 @@ On success, reply to the user with the URL and stop.
 - **One file per link.** A `.md` or `.markdown` file is rendered by the CLI into one self-contained page — built-in light/dark stylesheet, no external requests — and that page is what gets published; the deployment never sees markdown. Anything else goes up byte for byte, so HTML must be self-contained: a file that references local images, stylesheets, or scripts will 404 on the page.
 - **Write markdown when the deliverable is prose.** It is shorter than hand-writing a document shell and reads well in both themes. Reach for HTML when the page needs its own design or any JavaScript.
 - **It becomes public.** The link is unguessable and served with `noindex`, but anyone holding it can read it. Do not publish secrets, tokens, customer data, or internal material the user did not explicitly ask to share. When in doubt, say what you are about to publish and let the user confirm.
-- **Configuration must exist.** `~/.config/handbill/config.json` with `{ "endpoint", "token" }`, or the environment variables `HANDBILL_ENDPOINT` and `HANDBILL_TOKEN`. If neither is present, tell the user — do not go looking for a token elsewhere.
+- **A key must exist.** `~/.config/handbill/config.json` with a `token`, or the environment variable `HANDBILL_TOKEN`. The endpoint defaults to `https://api.handbill.dev` and is overridden by `endpoint` in that file or `HANDBILL_ENDPOINT` — but a self-hosted token with no endpoint named anywhere is refused rather than sent to the default, so that pairing needs both. If there is no key, tell the user to run `handbill login` — do not run it for them, it needs their browser, and do not go looking for a token elsewhere.
 
 ## List what is published
 
@@ -76,6 +76,7 @@ An alias is a living name: the reader's link keeps showing the latest version wh
 - `handbill doctor` checks, in order: config present, token present, endpoint reachable, token accepted, wildcard TLS valid — each with a one-line fix. Run it first when a command fails for a reason that is not the file.
 - `command not found: handbill` → the CLI is not installed. `npm i -g handbill`, or from a checkout of the repository: `bun run --cwd apps/cli build && npm i -g ./apps/cli`.
 - A `5xx` from the endpoint is the deployment's problem (`apps/worker` in the repository), not the file's. Tell the user and stop.
+- "You have published 25 pages today…" or "This account is storing its full … bytes" is a hosted account's quota, not a bug. Report it with the reset time it names and stop; the daily count only frees itself, and `handbill remove` is what gives stored bytes back. A self-hosted deployment never says either.
 
 ## Installing this skill
 
