@@ -30,6 +30,8 @@ I wanted to share some of my preferences and expectations for our collaboration.
 
 ## Commits preferences
 
+Use the `file-pr` skill to create PRs.
+
 **What NEVER goes in:**
 - "As requested by..." - use Co-authored-by trailer
 - "Generated with Claude Code" or any AI attribution
