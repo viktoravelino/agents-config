@@ -33,11 +33,12 @@ If there is genuinely no ticket, print the message without the `Jira:` line rath
 ## The message
 
 Print exactly this, in a single fenced code block so the user can copy it in one go:
+Choose between `@langflow-fe` for frontend or `@langflow-be` for backend or both depending on the PR. If you are unsure, ask the user which team to ping.
 
 ```
 PR: <pr-link>
 Jira: <jira-link>
-@langflow-fe
+@langflow-fe 
 ```
 
 Rules:
