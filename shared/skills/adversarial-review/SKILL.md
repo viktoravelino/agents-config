@@ -25,7 +25,9 @@ Also collect (ask only if genuinely unavailable):
 
 ## Fresh eyes rule
 
-If the current session authored or substantially discussed the diff, do not review it inline — the whole point is not sharing the author's blind spots. Delegate to a read-only `Explore` agent (thoroughness: very thorough) with: the repo path and branch, the scope command, the intent summary, the constraints, the attack angles below, and the output schema below. Instruct it to return only the JSON. If the session is cold (invoked purely to review someone else's diff), review inline.
+If the current session authored or substantially discussed the diff, do not review it inline — the whole point is not sharing the author's blind spots. Delegate to a read-only `Explore` agent (thoroughness: very thorough) with: the repo path and branch, the scope command, the intent summary, the constraints, the attack angles below, and the output schema below. If the session is cold (invoked purely to review someone else's diff), review inline.
+
+**The reviewer agent does not write the file.** `Explore` has no `Write` or `Edit` tool at all, so instructing it to save the review makes it fail or improvise a shell heredoc. Instruct it to return the JSON as its final message and nothing else; this session persists it per **Output** below. Fresh eyes is about who *analyzes* the diff — the parent only writes back a payload it never reasoned about, so nothing leaks the author's mental model into the review.
 
 **Model selection.** Pick the agent's model by review complexity, and state the choice to the user:
 
@@ -53,7 +55,28 @@ Every finding needs a concrete failure scenario ("caller sends X → Y happens")
 
 ## Output
 
-Write the JSON to `$(git rev-parse --git-common-dir)/adversarial-reviews/<worktree>/<UTC timestamp, e.g. 20260902T1430>.json`, where `<worktree>` is `$(basename "$(git rev-parse --show-toplevel)")` — inside `.git/` so it never dirties the working tree, `--git-common-dir` (not `--git-dir`) so reviews run from a linked worktree land in the main repository's `.git/` rather than a per-worktree dir that dies with it, and the `<worktree>` segment so reviews from different worktrees of the same repo stay grouped by the tree they attacked instead of interleaving in one flat directory — then tell the user the verdict, the path, and a short prose summary of the top findings (severity, file:line, one-line claim). Do not restate the full JSON in prose.
+Reviews go in the worktree's evidence folder, at `.evidence/reviews/<UTC timestamp>.json`. That is a symlink; the real bytes live under `$(git rev-parse --git-common-dir)/evidence/<worktree>/reviews/`, keyed by `<worktree>` = `$(basename "$(git rev-parse --show-toplevel)")`. This is the same store `validate-ticket` sets up, so a ticket's validation, evidence and reviews sit under one key instead of two parallel schemes — and the review survives the worktree being pruned, because `--git-common-dir` (not `--git-dir`) resolves to the main repository's `.git/` rather than a per-worktree dir that dies with it.
+
+The setup is idempotent, so run it whether or not a ticket flow already created the folder. `info/exclude` must be the **common** one — git ignores the per-worktree copy — and the pattern has no trailing slash, which would match only directories and miss the symlink:
+
+```sh
+WT="$(basename "$(git rev-parse --show-toplevel)")"
+EVID="$(git rev-parse --git-common-dir)/evidence/$WT"
+mkdir -p "$EVID/reviews"
+ln -sfn "$EVID" .evidence
+EX="$(git rev-parse --git-common-dir)/info/exclude"
+mkdir -p "$(dirname "$EX")"
+grep -qxF '.evidence' "$EX" || echo '.evidence' >> "$EX"
+TS="$(date -u +%Y%m%dT%H%M%SZ)"   # seconds, not minutes — two reviews of one diff collide otherwise
+```
+
+Write the JSON to `.evidence/reviews/$TS.json`, then point `latest.json` at it so a later author session finds the current review without globbing and sorting:
+
+```sh
+ln -sfn "$TS.json" .evidence/reviews/latest.json
+```
+
+Then tell the user the verdict, the path, and a short prose summary of the top findings (severity, file:line, one-line claim). Do not restate the full JSON in prose.
 
 Findings are ranked most severe first. Severity: `blocker` (wrong behavior, security issue, or data corruption reachable in practice), `should-fix` (real defect or trap, not merge-blocking), `nit` (style/clarity). Verdict is derived, never chosen: `block` if any blocker, `concerns` if any should-fix, else `clean`.
 
@@ -86,7 +109,7 @@ Findings are ranked most severe first. Severity: `blocker` (wrong behavior, secu
 
 ## Author handoff
 
-When an author agent (or this session, later) is asked to act on a review, it should load the JSON and work through `findings` in order. Outcomes are recorded by editing the review file itself: add two fields to each finding as it is dealt with —
+When an author agent (or this session, later) is asked to act on a review, it should load `.evidence/reviews/latest.json` — or the specific timestamped file the user names — and work through `findings` in order. Outcomes are recorded by editing the review file itself: add two fields to each finding as it is dealt with —
 
 ```json
 {
@@ -105,7 +128,7 @@ Everything else in the file is left untouched — the review stays the reviewer'
 
 ## Rules
 
-- Read-only, always. Never edit, commit, stage, or run anything that mutates state.
+- Read-only against the code, always. Never edit, commit, stage, or run anything that mutates the repository or a running service. The review file and its evidence folder are the only writes, and only this session makes them — the reviewer agent writes nothing.
 - Do not soften confirmed findings, and do not manufacture findings to look rigorous.
 - Stay in scope: review the diff and what it touches, not the whole codebase's pre-existing debt. Pre-existing issues the diff makes worse are in scope; ones it merely sits near are not.
 - Respect the user's stated constraints verbatim (forbidden paths, running services).

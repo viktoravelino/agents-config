@@ -113,9 +113,9 @@ fresh-eyes rule applies: the review is delegated to a read-only agent, not run i
 Default to `opus`; `sonnet` only for a genuinely trivial, single-concern diff.
 
 Give the reviewer the intent (what the ticket asked for and what the diff claims to do) and
-the constraints (running services and ports it must not disturb). It writes findings JSON to
-`.git/adversarial-reviews/<timestamp>.json` in the main repository's git dir, which is why
-it survives this worktree.
+the constraints (running services and ports it must not disturb). The reviewer agent returns
+its findings JSON; you write them to `.evidence/reviews/<timestamp>.json` alongside the rest
+of the ticket's evidence, so the review survives this worktree the same way the evidence does.
 
 Then work the findings in order and record an outcome on each one in that same file —
 `fixed`, `disputed`, or `acknowledged`, per the skill's author-handoff contract. Every

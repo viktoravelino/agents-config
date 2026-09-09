@@ -90,6 +90,7 @@ evidence up with its reviews and sessions under one key.
   validation.json   the machine-readable verdict (schema below)
   probes/           scripts that check the claim: bug repros, feasibility spikes
   before/           the captured starting state: logs, screenshots, API responses, DB rows
+  reviews/          adversarial-review findings JSON, added later by the work skill
 ```
 
 The symlink is disposable — deleting the worktree deletes it, but the real bytes under the
