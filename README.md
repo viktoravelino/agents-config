@@ -6,14 +6,20 @@ from this repository so edits here take effect immediately.
 ```
 shared/instructions.md     -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md
 shared/skills/<name>/      -> ~/.agents/skills/<name>, ~/.claude/skills/<name>
+shared/settings.json       -> ~/.claude/settings.json  (Claude only)
 shared/skill-sources.json     where the skills copied from other repos came from
 ```
 
 ## Install
 
 ```bash
-./install.sh          # link everything; -n to preview, --skills-only / --instructions-only
+./install.sh          # link everything; -n to preview
+                      # --skills-only / --instructions-only / --settings-only
 ```
+
+`settings.json` is Claude-only — Codex has no equivalent. Machine-local
+approvals stay out of it: Claude Code writes those to `settings.local.json`,
+which this repo does not manage.
 
 Links are synced: a skill removed here is unlinked there. Anything the script
 does not own is left alone, and real files in the way are backed up first.

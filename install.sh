@@ -7,6 +7,10 @@ INSTRUCTIONS_SOURCE="$SCRIPT_DIR/shared/instructions.md"
 SHARED_SKILLS_DIR="$SCRIPT_DIR/shared/skills"
 CODEX_INSTRUCTIONS_TARGET="$HOME/.codex/AGENTS.md"
 CLAUDE_INSTRUCTIONS_TARGET="$HOME/.claude/CLAUDE.md"
+# Claude-only: Codex has no settings.json equivalent. Runtime permission approvals
+# land in settings.local.json, so this versioned file stays stable under the symlink.
+SETTINGS_SOURCE="$SCRIPT_DIR/shared/settings.json"
+CLAUDE_SETTINGS_TARGET="$HOME/.claude/settings.json"
 CODEX_SKILLS_DIR="$HOME/.agents/skills"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 BACKUP_SUFFIX=".pre-agents-config-bak"
@@ -14,6 +18,7 @@ BACKUP_SUFFIX=".pre-agents-config-bak"
 DRY_RUN=0
 DO_INSTRUCTIONS=1
 DO_SKILLS=1
+DO_SETTINGS=1
 
 for arg in "$@"; do
   case "$arg" in
@@ -22,8 +27,14 @@ for arg in "$@"; do
       ;;
     --skills-only)
       DO_INSTRUCTIONS=0
+      DO_SETTINGS=0
       ;;
     --instructions-only)
+      DO_SKILLS=0
+      DO_SETTINGS=0
+      ;;
+    --settings-only)
+      DO_INSTRUCTIONS=0
       DO_SKILLS=0
       ;;
     -h|--help)
@@ -32,6 +43,7 @@ for arg in "$@"; do
       echo "Links this repo's shared config into Codex and Claude:"
       echo "  shared/instructions.md -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md"
       echo "  shared/skills/*        -> ~/.agents/skills/, ~/.claude/skills/"
+      echo "  shared/settings.json   -> ~/.claude/settings.json"
       echo
       echo "Skills are synced, not just added: links pointing at a skill that no"
       echo "longer exists are removed. Anything not managed by this script is"
@@ -43,7 +55,8 @@ for arg in "$@"; do
       echo
       echo "  -n, --dry-run           show what would change, touch nothing"
       echo "      --skills-only       skip the instructions file"
-      echo "      --instructions-only skip skills"
+      echo "      --instructions-only skip skills and settings"
+      echo "      --settings-only     only the Claude settings file"
       echo "  -h, --help              show this help"
       echo
       echo "Set NO_COLOR=1 to disable colored output."
@@ -118,6 +131,10 @@ compute_name_width() {
   if [ "$DO_INSTRUCTIONS" -eq 1 ]; then
     track_name_width "$(pretty_path "$CODEX_INSTRUCTIONS_TARGET")"
     track_name_width "$(pretty_path "$CLAUDE_INSTRUCTIONS_TARGET")"
+  fi
+
+  if [ "$DO_SETTINGS" -eq 1 ]; then
+    track_name_width "$(pretty_path "$CLAUDE_SETTINGS_TARGET")"
   fi
 
   if [ "$DO_SKILLS" -eq 1 ]; then
@@ -237,6 +254,12 @@ if [ "$DO_INSTRUCTIONS" -eq 1 ] && [ ! -f "$INSTRUCTIONS_SOURCE" ]; then
   exit 1
 fi
 
+if [ "$DO_SETTINGS" -eq 1 ] && [ ! -f "$SETTINGS_SOURCE" ]; then
+  printf '%sMissing settings file: %s%s\n' \
+    "$RED" "$(pretty_path "$SETTINGS_SOURCE")" "$RESET" >&2
+  exit 1
+fi
+
 skill_total=0
 if [ "$DO_SKILLS" -eq 1 ]; then
   if [ ! -d "$SHARED_SKILLS_DIR" ]; then
@@ -274,6 +297,12 @@ if [ "$DO_INSTRUCTIONS" -eq 1 ]; then
     "$(pretty_path "$CODEX_INSTRUCTIONS_TARGET")"
   ensure_link "$INSTRUCTIONS_SOURCE" "$CLAUDE_INSTRUCTIONS_TARGET" \
     "$(pretty_path "$CLAUDE_INSTRUCTIONS_TARGET")"
+fi
+
+if [ "$DO_SETTINGS" -eq 1 ]; then
+  section "Settings" "$(pretty_path "$SETTINGS_SOURCE")"
+  ensure_link "$SETTINGS_SOURCE" "$CLAUDE_SETTINGS_TARGET" \
+    "$(pretty_path "$CLAUDE_SETTINGS_TARGET")"
 fi
 
 if [ "$DO_SKILLS" -eq 1 ]; then

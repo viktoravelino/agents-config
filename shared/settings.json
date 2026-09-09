@@ -1,0 +1,23 @@
+{
+  "model": "opus[1m]",
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "permissions": {
+    "allow": [
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git worktree list:*)",
+      "Bash(git stash list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(acli jira workitem view:*)",
+      "Bash(acli jira workitem search:*)",
+      "Bash(handbill list:*)"
+    ]
+  }
+}
