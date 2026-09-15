@@ -24,6 +24,41 @@ which this repo does not manage.
 Links are synced: a skill removed here is unlinked there. Anything the script
 does not own is left alone, and real files in the way are backed up first.
 
+## How the skills fit together
+
+Workflow skills stay generic; anything that belongs to one project lives in
+that project's profile.
+
+| Kind | Skills |
+| --- | --- |
+| Workflows | `validate-ticket`, `work-ticket`, `diagnose`, `adversarial-review`, `file-pr`, `request-review`, `standup` |
+| Shared helpers | `evidence` (where proof lives), `dev-servers` (running an app in isolation), `git-worktree`, `acli-jira` |
+| Project profiles | `langflow` |
+| Documents | `design-artifact`, `html-plan`, `handbill` |
+
+Helpers and profiles set `user-invocable: false`: other skills pull them in,
+so they stay out of the `/` menu.
+
+### Project profiles
+
+A workflow skill resolves the repository's profile from its origin —
+`basename -s .git "$(git remote get-url origin)"` — and reads the sibling skill
+of that name if it exists, so `langflow-ai/langflow` and every worktree of it
+use `shared/skills/langflow/`. To add a project, create a folder named after
+the repository:
+
+```
+shared/skills/<repo>/
+  SKILL.md      index; frontmatter sets user-invocable: false and metadata.kind: project-profile
+  servers.md    ports, start commands, hazards      (read by dev-servers)
+  review.md     stack, hot paths, read-only checks  (read by adversarial-review)
+  workflow.md   base branches, review channel, ticket tracker, standup scope
+```
+
+Only add the files the project needs; a missing file means the generic
+defaults apply. Keep private details (internal board fields, customer names)
+in gitignored files, as `acli-jira/boards.md` does.
+
 ## Skills from other repositories
 
 Some skills are copies of a directory in another repository (for example
@@ -53,4 +88,4 @@ non-interactively. Skills without a manifest entry are authored here.
 ## Also here
 
 - `claude-heartbeat/` — timer that keeps Claude usage blocks chained (see its README).
-- `legacy/` — retired skills, kept for reference.
+- `legacy/` — retired skills and the old instructions, kept for reference.

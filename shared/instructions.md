@@ -14,7 +14,7 @@ I wanted to share some of my preferences and expectations for our collaboration.
 - Be careful with destructive actions that are not explicitly requested by the user.
 - Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not sloppy.
 - Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc.
-- Keep comment up to date! When making changes, it's important to keep things in sync.
+- Keep comments up to date! When making changes, it's important to keep things in sync.
 
 ## Coding preferences - TypeScript
 
@@ -23,14 +23,16 @@ I wanted to share some of my preferences and expectations for our collaboration.
 - Avoid one-line functions that are just casting wrappers.
 - Write TypeScript in ways that Matt Pocock and Theo would be proud of.
   
-## Coding preferences - General
+## Questions vs instructions
 
-- A question is a request for an answer, not for changes. If the message opens with "how hard would it be", "what are your thoughts", "why does", "should we", "is it possible", "can X do Y", or otherwise asks rather then instructs: answer it, and do not edit files.
+- A question is a request for an answer, not for changes. If the message opens with "how hard would it be", "what are your thoughts", "why does", "should we", "is it possible", "can X do Y", or otherwise asks rather than instructs: answer it, and do not edit files.
 - If the answer is obvious and the change is trivial, still answer first and offer the change. Ask before making it.
 
-## Commits preferences
+## Commits and PRs
 
 Use the `file-pr` skill to create PRs.
+
+Never merge a PR or enable auto-merge (`gh pr merge`, `--auto`), in any repo. Open the PR, report its URL and check status, and stop — merging is my review gate. Tell any agent you brief the same.
 
 **What NEVER goes in:**
 - "As requested by..." - use Co-authored-by trailer
@@ -38,7 +40,7 @@ Use the `file-pr` skill to create PRs.
 - Emoji (unless project convention requires)
 - Restating the file name when scope already says it
 
-## March ceremony to the task
+## Match ceremony to the task
 
 - Do not spawn subagents or a multi-agent panel for work a single agent finished in one pass. Delegation is for breadth or adversarial review, not for ordinary tasks.
 - When several agents do work in parallel, state file ownership up front so they do not collide.
@@ -49,5 +51,5 @@ GitHub CLI (`gh`) is available in this environment.
 
 Use it when PR context, PR metadata, PR base branch, review comments, or GitHub-specific workflow details are needed.
 
-Atlassian CLI (`acli`) may also be available for Jira work. Use it when Jira ticket context, JQL search, ticket updates, or board/project metadata are needed.
+Atlassian CLI (`acli`) is available for Jira work. Use it through the `acli-jira` skill whenever Jira ticket context, JQL search, ticket updates, or board/project metadata are needed.
 
