@@ -1,18 +1,17 @@
 ---
 name: obsidian-vault
-version: 0.1.0
-audience: agent
 description: >-
   Organize Obsidian vaults with MOCs, wikilinks, frontmatter/properties,
-  dashboards, orphan-note checks, and cleanup workflows. Use ONLY when the user
-  explicitly refers to Obsidian — by naming "Obsidian", an Obsidian "vault", or
-  an Obsidian-specific feature such as wikilinks ("[[ ]]"), the Dataview or Bases
-  plugins, or Obsidian Properties. Within that Obsidian context it covers
+  dashboards, orphan-note checks, and cleanup workflows. Use when the user
+  refers to Obsidian — by naming "Obsidian", an Obsidian "vault", or an
+  Obsidian-specific feature such as wikilinks ("[[ ]]"), the Dataview or Bases
+  plugins, or Obsidian Properties — or when adding, editing, or organizing notes
+  inside a vault (a folder that contains `.obsidian/`). Within that context it covers
   creating Maps of Content, adding/fixing wikilinks, finding orphan notes,
   normalizing YAML frontmatter, generating Dataview/Bases dashboards, organizing
   folders, deduplicating or renaming notes, and preparing the vault for AI use.
   Do NOT use this skill for generic note-taking, Markdown, or knowledge-base
-  requests that don't mention Obsidian.
+  requests outside an Obsidian vault.
 ---
 
 # Obsidian Vault Assistant
@@ -32,6 +31,15 @@ Obsidian-specific facts that shape every rule here:
 Before acting, confirm the vault's root folder and whether the user has the
 Dataview plugin installed (Bases is built in since Obsidian 1.9). When a request
 is ambiguous (organize vs. clean up vs. dashboard), ask which task.
+
+**The vault's own rules win.** If the vault has a `CLAUDE.md` or `AGENTS.md`, read
+it first: its folder layout, property names, and rules (for example, archiving
+instead of deleting) override the defaults in this skill. The layouts and
+property blocks below are for vaults that have not defined their own.
+
+**Tools.** A vault is a folder of Markdown files: search it with Grep/Glob, read
+with Read, change content with Edit, create notes with Write. Never move or
+rename notes from the shell (`mv`, `git mv`) — see Folder organization.
 
 ## Wikilinks
 
@@ -80,7 +88,8 @@ Notes on authentication, sessions, and access control.
 
 ## Frontmatter / Properties
 
-Add a consistent property block to every note. Recommended baseline:
+Add a consistent property block to every note. Recommended baseline when the
+vault does not define its own:
 ```yaml
 ---
 title: Session tokens
@@ -130,8 +139,8 @@ Note: large vaults can lag with heavy Dataview queries — prefer Bases there.
 ## Orphan notes & link hygiene
 
 An orphan is a note with no inbound or outbound links. To find and fix:
-1. **From Desktop Commander** (no app needed, scales to big vaults): `start_search`
-   the vault for `[[ ]]` links to each note's title — zero hits means no inbound
+1. **From the files** (no app needed, scales to big vaults): Grep the vault for
+   `[[ ]]` links to each note's title — zero hits means no inbound
    links (an *unlinked* note); to confirm a true orphan (no inbound **and** no
    outbound), also scan the note's own body for `[[...]]`. The same searches
    surface **unlinked mentions** (the title as plain text, not wrapped in `[[ ]]`)
@@ -141,16 +150,16 @@ An orphan is a note with no inbound or outbound links. To find and fix:
    ```dataview
    LIST WHERE length(file.inlinks) = 0 AND length(file.outlinks) = 0
    ```
-4. For each orphan: link it from a relevant MOC/note (`edit_block` to insert the
+4. For each orphan: link it from a relevant MOC/note (Edit to insert the
    wikilink), tag it `#needs-link` for a batch pass, or archive if obsolete.
 5. Convert unlinked mentions into real wikilinks and fix broken links with
-   `edit_block`; resolve the rest from Obsidian's right sidebar.
+   Edit; resolve the rest from Obsidian's right sidebar.
 
 ## Folder organization
 
 - Folders are for coarse buckets; **MOCs + tags do the real organizing**. Don't
   over-nest folders.
-- A workable layout:
+- A workable layout, for a vault that has none:
   ```
   00-inbox/        # unsorted captures
   10-notes/        # atomic notes
@@ -162,18 +171,18 @@ An orphan is a note with no inbound or outbound links. To find and fix:
   ```
 - Set the attachment folder in Settings so embeds land in `90-assets/`.
 - **Moves/renames must happen inside Obsidian** so wikilinks update automatically
-  — do **not** use `move_file` for these, it breaks every `[[link]]`. From Desktop
-  Commander, only edit *content* (`edit_block` / `write_file`); leave moving and
-  renaming to the user in the app.
+  — do **not** use `mv`, `git mv`, or any file-move tool for notes; it breaks every
+  `[[link]]`. From outside the app, only edit *content* (Edit / Write); leave
+  moving and renaming to the user in the app.
 
 ## Deduplicate & rename
 
-- **Duplicates**: `start_search` titles/aliases to find near-identical notes;
-  merge into one, keep the most-linked filename, copy unique content with
-  `edit_block`, then `start_search` for inbound `[[links]]` to the discarded note
-  and repoint them before deleting it.
+- **Duplicates**: Grep titles/aliases to find near-identical notes; merge into
+  one, keep the most-linked filename, copy unique content with Edit, then Grep
+  for inbound `[[links]]` to the discarded note and repoint them. Then archive the
+  discarded note, or delete it only if the vault's rules allow deletion.
 - **Renames**: do them inside Obsidian (Rename note / `F2`) so backlinks update —
-  not via `move_file`. Keep an `aliases` entry for the old name if it was widely
+  not from the shell. Keep an `aliases` entry for the old name if it was widely
   referenced.
 - Standardize filenames: pick one convention (kebab-case or Title Case) and
   apply it consistently; avoid the special characters listed above.
@@ -191,13 +200,13 @@ An orphan is a note with no inbound or outbound links. To find and fix:
 
 ## Workflows
 
-- **Build navigation**: `write_file` topic MOCs → `edit_block` notes to link them
-  in → refresh the Home MOC → convert unlinked mentions.
-- **Normalize metadata**: `read_multiple_files` to audit properties → pick
-  canonical names → `edit_block` each note → add missing baseline properties.
-- **Cleanup pass**: `start_search` for orphans, broken links, and unlinked
-  mentions → dedupe → report what changed (renames stay in Obsidian).
-- **Dashboard**: confirm Dataview vs. Bases → `write_file` the view from properties/tags.
+- **Build navigation**: Write topic MOCs → Edit notes to link them in → refresh
+  the Home MOC → convert unlinked mentions.
+- **Normalize metadata**: Read notes to audit properties → pick canonical names →
+  Edit each note → add missing baseline properties.
+- **Cleanup pass**: Grep for orphans, broken links, and unlinked mentions →
+  dedupe → report what changed (renames stay in Obsidian).
+- **Dashboard**: confirm Dataview vs. Bases → Write the view from properties/tags.
 
 ## Checklist before finishing
 - [ ] New/changed notes have consistent frontmatter (canonical property names).
