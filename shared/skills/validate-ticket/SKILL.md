@@ -33,8 +33,9 @@ Use the `acli-jira` skill. Always `--json`, and always read the comments — the
 requirements and repro steps often live there rather than in the description.
 
 ```sh
-acli jira workitem view <KEY> --json
-acli jira workitem comment list <KEY> --json
+acli jira workitem view <KEY> --fields "*navigable" --json   # includes parent and issuelinks
+acli jira workitem comment list --key <KEY> --json
+acli jira workitem link list --key <KEY> --json
 ```
 
 Chase what the ticket points at, and what it should have pointed at:
