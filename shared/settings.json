@@ -3,6 +3,7 @@
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "permissions": {
+    "additionalDirectories": ["/Users/viktoravelino/projects/obsidian/notes"],
     "allow": [
       "Bash(git diff:*)",
       "Bash(git log:*)",
