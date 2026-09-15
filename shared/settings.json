@@ -17,7 +17,8 @@
       "Bash(gh pr checks:*)",
       "Bash(acli jira workitem view:*)",
       "Bash(acli jira workitem search:*)",
-      "Bash(handbill list:*)"
+      "Bash(handbill list:*)",
+      "Bash(sqlite3:*)"
     ]
   }
 }
