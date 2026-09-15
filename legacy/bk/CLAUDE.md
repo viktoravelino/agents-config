@@ -1,1 +1,0 @@
-Soft conventions for specific areas live in `.claude/rules`. Check for matching hints when editing files in those paths.
