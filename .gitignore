@@ -1,2 +1,4 @@
 **/.DS_Store
-     
+
+# Board conventions hold internal Jira details; kept local only
+shared/skills/acli-jira/boards.md
