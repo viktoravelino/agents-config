@@ -20,8 +20,16 @@ handoff.
 The cost of staying in the same session is that you inherit your own blind spots, so the
 adversarial review at step 5 is not optional and never runs inline.
 
-Two hard stops carry over: never mutate the Jira ticket, and never commit or open a PR
-until the user has reviewed the diff and said to.
+## Hard rules (read first)
+
+- **Never commit, push, or open a PR** before the user has reviewed the diff and said to.
+- **Never mutate the Jira ticket.** Offer the transition and comment; do not apply them.
+- **Never review your own diff inline.** The adversarial review is always delegated.
+- **Stay inside the validated scope**; report what you find outside it instead of fixing it.
+- **Never disturb the user's environment** when running the app (see `dev-servers`).
+- **Before/after evidence is captured the same way** or not presented as a pair.
+- **Say which acceptance criteria are *not* met.** A partial result stated plainly beats a
+  complete-sounding one that is not.
 
 ## 1. Resume the workspace
 
@@ -137,13 +145,3 @@ When they say to file it, use the `file-pr` skill. Two things carry over from he
 
 The Jira ticket is still untouched. Offer the status transition and the comment as something
 the user can apply; do not apply them.
-
-## Rules
-
-- Never commit, push, or open a PR before the user has reviewed the diff and said to.
-- Never edit the Jira ticket.
-- Never review your own diff inline.
-- Stay inside the validated scope; report what you find outside it.
-- Before/after evidence is captured the same way or not presented as a pair.
-- Say which acceptance criteria are *not* met. A partial result stated plainly beats a
-  complete-sounding one that is not.

@@ -14,6 +14,17 @@ Backend `7861` (then `7862`, …), frontend `3001` (then `3002`, …). The user'
 - **Never the repo's Playwright config** (`npx playwright test` from `src/frontend`): its `webServer` block starts a backend on 7860 and a stub on 8787.
 - Without overrides, the backend uses the default config dir and SQLite database — the user's data, with migrations run against it.
 
+## Credential check
+
+Most Langflow claims run a flow, and a flow runs through a model provider. Before installing anything, check the key for the provider the flow's components use, reading it from the `.env` the backend will load:
+
+```sh
+KEY="$(grep -E '^OPENAI_API_KEY=' .env | cut -d= -f2- | tr -d "\"'")"
+curl -s -o /dev/null -w '%{http_code}\n' https://api.openai.com/v1/models -H "Authorization: Bearer $KEY"
+```
+
+`200` means go. For other providers, call their list-models endpoint the same way. If the key is not in `.env`, it may be stored as a Langflow global variable in the user's database instead — say so rather than guessing, since the isolated database will not have it.
+
 ## Dependencies
 
 A fresh worktree has none. The first `uv run` creates `.venv` (slow). If `src/frontend/node_modules` is missing, run `npm ci` in `src/frontend` first (several minutes).

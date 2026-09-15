@@ -17,8 +17,18 @@ Validation can legitimately end in "this is not a bug", "this already exists", "
 three tickets", or "this cannot be built as described". Reaching for the work because the
 ticket exists is the failure mode this skill prevents.
 
-Never mutate the ticket. No transitions, no comments, no field edits, no assignment —
-report what should change and let the user apply it, unless they explicitly ask otherwise.
+## Hard rules (read first)
+
+- **Never mutate the ticket.** No transitions, comments, field edits, or assignment — report
+  what should change and let the user apply it, unless they explicitly ask otherwise.
+- **Read-only against the product code.** The only writes are the worktree, `.evidence/`,
+  and the git exclude entry.
+- **Never disturb the user's environment** — no default ports, no killing their processes,
+  no writing into their data (see `dev-servers`).
+- **An unbounded probe always gets a watchdog** before its first run.
+- **Stop at the verdict.** Do not start the work, commit, or open a PR.
+- **State plainly what you did not verify.** A validation with an honest gap is worth more
+  than one that implies coverage it does not have.
 
 ## Inputs
 
@@ -176,13 +186,3 @@ Then report to the user: the verdict in one line, the findings, the scope, the e
 paths, any gap or risk, and the ticket hygiene suggestions. **Stop there.** Do not start
 the work, do not commit, do not open a PR — the follow-up work skill picks up from
 `validation.json`, once the user says to go.
-
-## Rules
-
-- Read-only against the product code. The only writes are the worktree, `.evidence/`, and
-  the git exclude entry.
-- Never edit the Jira ticket.
-- Never use default dev ports when the user has an environment running.
-- An unbounded probe always gets a watchdog before its first run.
-- State plainly what you did not verify. A validation with an honest gap is worth more than
-  one that implies coverage it does not have.
