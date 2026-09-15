@@ -22,11 +22,10 @@ report what should change and let the user apply it, unless they explicitly ask 
 
 ## Inputs
 
-- **Ticket**: a key (`LE-2454`) or a browse URL. Required.
-- **Live environment** (ask once if the ticket concerns runtime behavior and the user has
-  not said): are servers already running and on which ports, is auto-login on, which API
-  keys are in `.env`. If nothing is running, start what is needed on **non-default ports**
-  so an existing dev environment is never disturbed.
+- **Ticket**: a key (`PROJ-123`) or a browse URL. Required.
+- **Live environment** (only if the ticket concerns runtime behavior): follow `dev-servers`.
+  It covers asking what is already running and standing up an isolated stack that never
+  disturbs it.
 
 ## 1. Read the ticket, then classify it
 
@@ -63,62 +62,17 @@ component, stale description. It goes in the verdict as suggestions; you do not 
 
 ## 2. Set up the workspace
 
-Default to an isolated worktree so validation never dirties the main checkout, using the
-`git-worktree` skill's conventions (sibling dir, `<project>-<TICKET>`, `.env` files copied
-in, branched from a freshly fetched base). Use the branch prefix the ticket type implies —
-`fix/`, `feat/`, `chore/`, `spike/`.
-
-```sh
-git fetch origin <base> && git worktree add -b <type>/<KEY>-<slug> ../<project>-<KEY> origin/<base>
-```
+Default to an isolated ticket worktree so validation never dirties the main checkout —
+create it (or reuse the existing one for this key) with the `git-worktree` ticket
+convention, branched from a freshly fetched base.
 
 Skip the worktree only when the user already has servers running against another checkout
 and wants validation there. Say explicitly which tree you validated in — it is part of the
 verdict.
 
-### The evidence folder
-
-Evidence is browsable at `.evidence/` next to the code, but the real bytes live under the
-**common** git dir so they survive the worktree being pruned — a validation is often days
-older than the fix, and the folder is the deliverable. `.evidence/` is a symlink into
-`$(git rev-parse --git-common-dir)/evidence/<worktree>/`, keyed by the worktree name so
-several worktrees of the same repo do not collide, and so the dashboard can line a ticket's
-evidence up with its reviews and sessions under one key.
-
-```
-<git-common-dir>/evidence/<worktree>/   <- real bytes, durable
-<worktree>/.evidence -> the above       <- symlink, browsable next to the code
-  VALIDATION.md     the human-readable verdict
-  validation.json   the machine-readable verdict (schema below)
-  probes/           scripts that check the claim: bug repros, feasibility spikes
-  before/           the captured starting state: logs, screenshots, API responses, DB rows
-  reviews/          adversarial-review findings JSON, added later by the work skill
-```
-
-The symlink is disposable — deleting the worktree deletes it, but the real bytes under the
-common git dir stay. Recreating a worktree of the same name (resuming the ticket) re-links to
-the evidence that is still there, so the `mkdir -p`/`ln -sfn` below are safe to re-run.
-
-The symlink must never reach a commit. Git only reads `info/exclude` from the **common** git
-dir — the per-worktree one at `.git/worktrees/<name>/info/exclude` is ignored — so exclude it
-there, idempotently, and never by editing the repo's `.gitignore`. The pattern is `.evidence`
-with no trailing slash: a trailing-slash pattern matches only directories and would miss the
-symlink. The real bytes need no exclude — nothing under `.git/` is ever tracked.
-
-```sh
-WT="$(basename "$(git rev-parse --show-toplevel)")"
-EVID="$(git rev-parse --git-common-dir)/evidence/$WT"
-mkdir -p "$EVID"/{probes,before}
-ln -sfn "$EVID" .evidence
-EX="$(git rev-parse --git-common-dir)/info/exclude"
-mkdir -p "$(dirname "$EX")"
-grep -qxF '.evidence' "$EX" || echo '.evidence' >> "$EX"
-```
-
-The later work skill adds `.evidence/after/` alongside it. `before/` is the half of the
-pair that can only be captured while the current state still exists — the broken behavior
-for a bug, the un-built screen for a feature — so capture it even when the ticket looks
-obviously true.
+Then set up the evidence store with the `evidence` skill. This skill writes
+`VALIDATION.md`, `validation.json`, `probes/`, and `before/` into it; `work-ticket` and
+`adversarial-review` add the rest later.
 
 ## 3. Check the claim in code
 
@@ -173,26 +127,14 @@ impossible, and label the verdict honestly when you cannot (`confidence: code-on
 - **Chore — record the before state** the refactor must preserve: current test run, current
   output, current timings if it is a perf claim.
 
-Be precise about what evidence proves. "The mock server received only model-listing
-requests, never an embeddings request" is proof of misrouting; a red toast is not.
-
-Two standing hazards:
-
-- **The environment can mask the claim.** A key present in `.env` can turn the ticket's
-  exact error into a different downstream one. When that happens, say so and close the gap
-  deliberately (re-run the persisted state through the same factory without the key).
-- **Anything unbounded gets a watchdog before its first run** — a lap counter, an RSS limit
-  with a hard exit. A repro must never be able to take the machine down.
-
-Drive the UI with the repo's own Playwright install rather than adding a dependency.
+Follow `evidence` for how probes are written and bounded, what counts as proof, and
+environments that mask the claim. Anything that needs the running app or a browser follows
+`dev-servers`.
 
 ## 5. Clean up
 
-Everything created in a shared or live environment gets removed, and the removal gets
-reported: test records, provider config, inserted rows, mock servers, background processes,
-temp ports. Artifacts under `.evidence/` stay — they are the deliverable.
-
-The worktree stays too. It is the workspace the work will use.
+Tear down what you started per `dev-servers`, and remove anything probes created per
+`evidence`. Evidence and the worktree stay — they are what the work will build on.
 
 ## 6. The verdict
 
@@ -202,8 +144,8 @@ themselves, and `.evidence/validation.json` for the follow-up skill:
 ```json
 {
   "schema": "ticket-validation/v1",
-  "ticket": "LE-2454",
-  "url": "https://<site>/browse/LE-2454",
+  "ticket": "PROJ-123",
+  "url": "https://<site>/browse/PROJ-123",
   "validated_at": "2026-09-02T14:30:00Z",
   "type": "bug | feature | chore | spike",
   "verdict": "ready | needs-info | needs-split | already-done | duplicate | rejected | blocked",

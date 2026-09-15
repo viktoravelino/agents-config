@@ -97,26 +97,19 @@ Verification comes before evidence — evidence of a broken change is worth noth
   cheap and deterministic, promote it into the real test suite — a repro script that becomes
   a regression test is worth more than either alone.
 
-Then capture `.evidence/after/` as the matching half of every artifact in `.evidence/before/`.
-
-**Matching is the whole point**: same script, same viewport, same route, same data, same
-command. A before/after pair shot from two different angles proves nothing and reviewers
-will notice. Reuse the exact capture scripts validation left in `.evidence/probes/`.
-
-If a `before/` artifact turns out to be missing, `git stash` the change, restart whatever
-needs restarting, capture it, and unstash. Do not reconstruct it from memory and do not
-present an after-only screenshot as a comparison.
+Then capture `.evidence/after/` as the matching half of every artifact in `.evidence/before/`,
+by the matching rules in `evidence` — same scripts from `probes/`, same viewport, route, and
+data, and the stash procedure if a `before/` artifact is missing. Run the app per `dev-servers`.
 
 ## 5. Adversarial review — always, always fresh
 
 Invoke the `adversarial-review` skill on the diff. This session authored the change, so its
-fresh-eyes rule applies: the review is delegated to a read-only agent, not run inline.
-Default to `opus`; `sonnet` only for a genuinely trivial, single-concern diff.
+fresh-eyes rule and model choice apply: the review is delegated to a read-only agent, never
+run inline.
 
 Give the reviewer the intent (what the ticket asked for and what the diff claims to do) and
-the constraints (running services and ports it must not disturb). The reviewer agent returns
-its findings JSON; you write them to `.evidence/reviews/<timestamp>.json` alongside the rest
-of the ticket's evidence, so the review survives this worktree the same way the evidence does.
+the constraints (running services and ports it must not disturb). Persist the findings it
+returns as that skill's Output section describes, into the ticket's evidence store.
 
 Then work the findings in order and record an outcome on each one in that same file —
 `fixed`, `disputed`, or `acknowledged`, per the skill's author-handoff contract. Every
@@ -137,10 +130,8 @@ Then wait. The user reviews the code first — that is a standing preference, no
 
 When they say to file it, use the `file-pr` skill. Two things carry over from here:
 
-- **`.evidence/` cannot be linked from the PR.** It is git-excluded and never leaves this
-  machine — it now survives the worktree under the common git dir, but it is still not a URL
-  anyone else can reach. Screenshots that belong in the PR get copied to the public assets
-  repo and embedded as raw URLs, exactly as `file-pr` describes.
+- **`.evidence/` cannot be linked from the PR** (see Sharing in `evidence`). Screenshots
+  that belong in the PR go to the public assets repo as `file-pr` describes.
 - **Before/after belongs in the two-column table**, with real alt text describing what each
   image shows. This is what the paired capture in step 4 was for.
 

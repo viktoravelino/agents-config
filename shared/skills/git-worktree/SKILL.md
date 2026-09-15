@@ -1,256 +1,80 @@
 ---
 name: git-worktree
-description: This skill should be used when the user wants to manage Git worktrees - creating worktrees from local or remote branches, listing active worktrees with details, deleting worktrees, or switching between worktrees. Ideal for working on multiple branches simultaneously without stashing changes.
-argument-hint: "[list | create <branch> | delete <branch> | prune]"
+description: Create, list, and remove Git worktrees using the sibling-directory convention, with env files copied in -- including the ticket-worktree convention validate-ticket and work-ticket use. Use when the user wants a worktree for a branch or ticket, to list worktrees, or to clean them up.
+argument-hint: "[list | create <branch or ticket> | remove <branch or ticket> | prune]"
 ---
 
-# Git Worktree Management
+# Git Worktree
 
-## Overview
+Worktrees let several branches be checked out at once without stashing. Run everything from inside the repository.
 
-This skill provides comprehensive Git worktree management capabilities, enabling work on multiple branches simultaneously in isolated directories. Worktrees eliminate the need for stashing when switching contexts and are ideal for parallel development, quick bug fixes, and code reviews.
+## Conventions
 
-## When to Use This Skill
+- **Location**: a sibling of the main checkout, `../<project>-<name>`, where `<project>` is `basename "$(git rev-parse --show-toplevel)"` of the main checkout.
+- **Name**: the ticket key for ticket work (`myapp-PROJ-123`), otherwise the branch name with `/` replaced by `-`.
+- **Ticket branches**: `<type>/<KEY>-<slug>`, where the type comes from the work — `fix/`, `feat/`, `chore/`, `spike/` — and the slug is a few words of the summary (`fix/PROJ-123-temp-file-cleanup`).
+- **One worktree per ticket.** If `git worktree list` already shows one for the key, reuse it instead of creating a second.
 
-Use this skill when the user wants to:
-- Create a new worktree from a local branch, remote branch, or new branch
-- List all active worktrees with detailed information
-- Delete and clean up worktrees
-- Get navigation commands to switch between worktrees
-- Set up parallel development environments
+## Create
 
-## How It Works
+Pick the form that matches where the branch comes from. Always fetch first so a new branch starts from the current base, not a stale local copy.
 
-### Configuration
+```sh
+MAIN="$(git worktree list --porcelain | awk 'NR==1{print $2}')"
+PROJECT="$(basename "$MAIN")"
 
-**Location Strategy**: Sibling directory pattern
-- Worktrees are created outside the main repository: `../<project>-<branch>`
-- Example: Main repo at `~/projects/myproject`, worktree at `~/projects/myproject-feature-x` or `~/projects/myproject-ticket-number`
-- Benefits: Clean separation, no nested repos, IDE-friendly
+# New branch from a base (ticket work, new features)
+git fetch origin <base>
+git worktree add -b <branch> "$MAIN/../$PROJECT-<name>" origin/<base>
 
-**Naming Convention**: `<project>-<branch>`
-- Project name extracted using: `basename "$(git rev-parse --show-toplevel)"`
-- Example: `myproject-feature-auth`, `myapp-bugfix-login`, `myservice-fix-123`, `myproject-LE-1234`
+# Existing remote branch (someone else's PR)
+git fetch origin <branch>
+git worktree add --track -b <branch> "$MAIN/../$PROJECT-<name>" origin/<branch>
 
-**Environment File**: Always copy repo-root `.env` into new worktree, and any other `.env` files in subdirectories should be copied as well. This ensures consistent environment configuration across worktrees.
-- After every successful worktree creation, copy: `cp .env ../<project>-<branch>/.env`, `cp <subdir>/.env ../<project>-<branch>/<subdir>/.env` for any subdirectory `.env` files
-- Source `.env` is the main repository root where the command is run
-- If `.env` is missing, warn clearly instead of failing the worktree creation
-
-### Interface
-
-**Hybrid Mode**: Accepts arguments when provided, prompts when missing
-
-**Usage patterns**:
-```
-# Interactive menu
-User: "Manage my worktrees"
-User: "Create a worktree"
-
-# Direct with arguments
-User: "Create worktree from remote branch feature-x"
-User: "List all worktrees"
-User: "Delete worktree for branch hotfix-123"
+# Existing local branch
+git worktree add "$MAIN/../$PROJECT-<name>" <branch>
 ```
 
-## Core Operations
+For ticket work, `<base>` is the branch the work targets — see `file-pr` for how to settle it.
 
-### 1. List Worktrees
+### Copy the env files
 
-**Purpose**: Show all active worktrees with detailed information
+Env files are git-ignored, so a new worktree has none. Copy every one the main checkout has, keeping its path:
 
-**What to display**:
-- Index number for easy reference
-- Worktree path
-- Branch name
-- HEAD commit hash (short)
-- Commit message (first line)
-- Indicator for current worktree
-
-**Implementation**:
-```bash
-# Get project name
-project=$(basename "$(git rev-parse --show-toplevel)")
-
-# List worktrees with details
-git worktree list -v
+```sh
+git -C "$MAIN" ls-files --others --ignored --exclude-standard -- '.env' '**/.env' \
+  | grep -v node_modules \
+  | while read -r f; do mkdir -p "$(dirname "$WT/$f")"; cp "$MAIN/$f" "$WT/$f"; done
 ```
 
-**Output format**:
-```
-Git Worktrees for myproject:
+(`$WT` is the new worktree's path.) If the main checkout has none, say so and continue — a missing env file is not a reason to fail.
 
-1. ~/projects/myproject (main)
-   abc1234 Initial commit
-   [CURRENT]
+Do not copy `.venv` or `node_modules`. Dependencies are installed in the worktree only when something needs to run there (`dev-servers` covers it).
 
-2. ~/projects/myproject-feature-x (feature-x)
-   def5678 Add authentication logic
+### After creating
 
-3. ~/projects/myproject-hotfix (hotfix-123)
-   789abcd Fix login bug
-```
+- Ticket or debugging work: set up the evidence store with the `evidence` skill.
+- Tell the user the path and branch. Do not `cd` their shell or open an editor for them.
 
-### 2. Create Worktree from Remote Branch
+## List
 
-**Purpose**: Fetch and create a worktree from a remote branch
-
-**Steps**:
-1. Validate we're in a git repository
-2. Get project name: `project=$(basename "$(git rev-parse --show-toplevel)")`
-3. Extract branch name from remote reference (e.g., `origin/feature-x` -> `feature-x`)
-4. Check if worktree already exists (warn and skip if it does)
-5. Fetch remote branch: `git fetch origin <branch-name>`
-6. Verify remote branch exists (check exit code)
-7. Determine worktree path: `../<project>-<branch-name>`
-8. Create worktree: `git worktree add ../<project>-<branch-name> origin/<branch-name>`
-9. Copy environment file: `cp .env ../<project>-<branch-name>/.env`
-10. Show success message with path and navigation command
-
-**Error handling**:
-- Not in git repo: Show clear error message
-- Worktree already exists: "Worktree for branch 'X' already exists at Y. Use 'list' to see all worktrees."
-- Remote branch doesn't exist: "Remote branch 'origin/X' not found. Available branches: [list]"
-- `.env` missing: "Worktree created, but `.env` not found in repo root so it was not copied."
-
-**Success output**:
-```
-✓ Created worktree for remote branch 'feature-x'
-
-Location: ~/projects/myproject-feature-x
-Branch: feature-x (tracking origin/feature-x)
-.env: copied from main repo root
-
-To switch to this worktree:
-  cd ../myproject-feature-x
-
-To start working:
-  cd ../myproject-feature-x && code .
+```sh
+git worktree list
 ```
 
-### 3. Create Worktree from Local Branch
+Show path, branch, and short HEAD per worktree, and mark the current one.
 
-**Purpose**: Create a worktree from an existing local branch
+## Remove
 
-**Steps**:
-1. Validate we're in a git repository
-2. Get project name
-3. Verify local branch exists: `git rev-parse --verify <branch-name>`
-4. Check if worktree already exists
-5. Create worktree: `git worktree add ../<project>-<branch-name> <branch-name>`
-6. Copy environment file: `cp .env ../<project>-<branch-name>/.env`
-7. Show success message with navigation
-
-**Error handling**:
-- Local branch doesn't exist: "Local branch 'X' not found. Available branches: [list local branches]"
-- Worktree already exists: Same as remote case
-- `.env` missing: "Worktree created, but `.env` not found in repo root so it was not copied."
-
-### 4. Create Worktree with New Branch
-
-**Purpose**: Create a worktree with a brand new branch
-
-**Parameters needed**:
-- New branch name
-- Base branch (optional, default: current branch)
-
-**Steps**:
-1. Validate we're in a git repository
-2. Get project name
-3. Get base branch (use current if not specified)
-4. Check if worktree directory already exists
-5. Create worktree with new branch: `git worktree add -b <new-branch> ../<project>-<new-branch> <base-branch>`
-6. Copy environment file: `cp .env ../<project>-<new-branch>/.env`
-7. Show success message
-
-**Success output**:
-```
-✓ Created new worktree with branch 'experiment-auth'
-
-Location: ~/projects/myproject-experiment-auth
-Branch: experiment-auth (based on main)
-.env: copied from main repo root
-
-To switch to this worktree:
-  cd ../myproject-experiment-auth
+```sh
+git -C <worktree> status --short          # anything uncommitted?
+git worktree remove <worktree>
+git branch -d <branch>                    # only if the user wants the branch gone too
 ```
 
-**Error handling**:
-- `.env` missing: "Worktree created, but `.env` not found in repo root so it was not copied."
+- If the worktree has uncommitted or unpushed work, show it and ask before removing. Never `--force` or `rm -rf` a worktree on your own.
+- The worktree's evidence survives removal (it lives under the common git dir). Say so if the user expects it to be gone.
 
-### 5. Delete Worktree
+## Prune
 
-**Purpose**: Remove a worktree and show prune command
-
-**Steps**:
-1. If no branch specified, list all worktrees for selection
-2. Verify worktree exists for specified branch
-3. Remove worktree: `git worktree remove <path>` or manually `rm -rf <path>`
-4. Show manual prune command (don't auto-execute per user preference)
-
-**Output**:
-```
-✓ Removed worktree at ~/projects/myproject-feature-x
-
-To clean up metadata, run:
-  git worktree prune
-```
-
-### 6. Prune Worktrees
-
-**Purpose**: Clean up worktree metadata
-
-**Steps**:
-1. Run: `git worktree prune`
-2. Show what was cleaned
-
-**Output**:
-```
-✓ Pruned stale worktree metadata
-
-Run 'git worktree list' to see remaining worktrees.
-```
-
-### 7. Switch Helper
-
-**Purpose**: Show easy navigation to worktrees
-
-**Implementation**:
-1. List all worktrees (numbered)
-2. Provide copy-ready cd commands
-
-**Output**:
-```
-Available worktrees:
-
-1. main (current)
-   cd ~/projects/myproject
-
-2. feature-x
-   cd ~/projects/myproject-feature-x
-
-3. hotfix-123
-   cd ~/projects/myproject-hotfix
-```
-
-## Interactive Flow
-
-When invoked without arguments:
-
-1. Show menu:
-   ```
-   Git Worktree Management
-
-   1. List all worktrees
-   2. Create from remote branch
-   3. Create from local branch
-   4. Create new branch
-   5. Delete worktree
-   6. Prune metadata
-   7. Switch between worktrees
-   ```
-
-2. Prompt for selection
-3. For create operations, prompt for required info (branch name, base branch, etc.)
-4. Execute operation
-5. Show results with clear next steps
+`git worktree prune` clears metadata for worktree directories that were deleted by hand. Run it when `git worktree list` shows entries whose paths no longer exist.

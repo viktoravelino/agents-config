@@ -1,16 +1,18 @@
 ---
 name: request-review
-description: Produce the copy-pasteable message asking the Langflow frontend or backend team to review a PR. Use when the user asks to request a review, ping the review channel, or ask for eyes on a PR in a Langflow repository.
+description: Produce the copy-pasteable message asking a team to review a PR, using the review channel defined in the repository's project profile. Use when the user asks to request a review, ping the review channel, or ask for eyes on a PR.
 argument-hint: "[PR number or URL]"
 ---
 
 # Request review
 
-Output a ready-to-send message for the Langflow review channel. **You do not post it** — there is no channel integration here. Print the message and stop; the user sends it.
+Output a ready-to-send message for the project's review channel. **You do not post it** — there is no channel integration here. Print the message and stop; the user sends it.
 
-## Scope
+## Project profile
 
-This channel, its team handles, and the Jira site below belong to Langflow work (`langflow-ai/*` repositories). For a PR anywhere else, say there is no review channel set up for that repo and stop — do not reuse the Langflow handles.
+Resolve the repo's profile: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **workflow** file. Its "Review channel" section defines the team handles, how to pick them, and the message shape; its "Jira" section gives the browse URL and key pattern.
+
+If there is no profile, or it has no review channel, say that no review channel is set up for this repo and stop — do not borrow another project's handles.
 
 ## Gather the links
 
@@ -24,36 +26,22 @@ Work out both links from context before printing. Do not ask the user for someth
 
 If the branch has no PR, say so and offer to file one (see the `file-pr` skill) instead of printing a message with a hole in it.
 
-**Jira link** — in this order:
+**Ticket link** — in this order:
 
 1. A ticket key in the user's message.
 2. A ticket created or referenced earlier in this conversation.
 3. The trailing `Jira:` line in the PR body: `gh pr view <n> --json body --jq .body | grep -i '^Jira:'`.
-4. A `LE-\d+` key in the branch name or commit messages.
+4. A key matching the profile's pattern in the branch name or commit messages.
 
-Jira links use `https://datastax.jira.com/browse/<KEY>`.
-
-If there is genuinely no ticket, print the message without the `Jira:` line rather than inventing a key or leaving a placeholder — and mention that you dropped it.
+Build the link from the profile's browse URL. If there is genuinely no ticket, print the message without the ticket line rather than inventing a key or leaving a placeholder — and mention that you dropped it.
 
 ## Pick the team
 
-- `@langflow-fe` when the diff touches the frontend (`src/frontend/`).
-- `@langflow-be` when it touches the backend (`src/backend/`, `src/lfx/`).
-- Both, space-separated on the same line, when it touches both.
-
-Decide from `gh pr diff <n> --name-only`. If the split is unclear (only tests, docs, or CI), ask the user which team to ping.
+Follow the profile's rule, deciding from `gh pr diff <n> --name-only`. If the split is unclear, ask the user which team to ping.
 
 ## The message
 
-Print exactly this, in a single fenced code block so the user can copy it in one go:
-
-```
-PR: <pr-link>
-Jira: <jira-link>
-<team handle(s)>
-```
-
-Rules:
+Print the profile's message shape exactly, in a single fenced code block so the user can copy it in one go.
 
 - Raw URLs, not markdown links — the channel renders its own previews.
 - Team handle(s) on their own last line, verbatim.

@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Run an adversarial code review of a diff (working tree, commit range, branch, or PR) that attacks the change from security, correctness, completeness, and code-quality angles, verifies every suspicion against surrounding code, and emits structured JSON findings that an author agent can consume and act on. Use when the user asks for an adversarial review, a hostile review, to "attack this diff", or to review changes before merge.
+description: Run an adversarial code review of a diff (working tree, commit range, branch, or PR) that attacks the change from security, correctness, completeness, frontend-behavior, and code-quality angles, verifies every suspicion against surrounding code, and emits structured JSON findings that an author agent can consume and act on. Use when the user asks for an adversarial review, a hostile review, to "attack this diff", or to review changes before merge.
 argument-hint: "[PR number | commit range | branch]"
 ---
 
@@ -23,6 +23,7 @@ Also collect (ask only if genuinely unavailable):
 
 - **Intent**: what the diff claims to do — from the user, PR description, commit messages, or linked ticket. The review attacks the gap between claim and code.
 - **Constraints**: paths, services, or ports the reviewer must not touch. The review is always read-only: no edits, no commits, no formatters, no dev servers. Running read-only checks (`ruff check`, `tsc --noEmit`, linters) is allowed.
+- **Project profile**: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **review** file and pass it to the reviewer agent along with the angles. It adds project-specific targets and check commands; it does not replace the angles.
 
 ## Fresh eyes rule
 
@@ -45,7 +46,17 @@ Derive concrete suspicions from the diff for each angle, then verify each one in
 2. **Correctness.** Legacy/migration behavior: does existing data (missing rows, null fields, old defaults) take a different path than before? Ordering: did the change move a read, write, or check across an authorization or transaction boundary? Do serialization boundaries (`exclude`, DTO mapping, spread/pick) still carry exactly the intended fields? Off-by-one, None/undefined flow, error paths.
 3. **Completeness.** Grep for every sibling call site, alternate entry point (CLI, other routes, background tasks, MCP/tools), and copy of the pattern the diff fixes. Do any still have the bug? Any schema snapshot, OpenAPI spec, docs, or generated file that must change with it?
 4. **Tests.** Do the new/changed tests assert the actual behavior (persisted values, responses) or do they over-mock into asserting nothing? Is the bug being fixed actually covered by a test that would have caught it?
-5. **Language/idiom quality** (should-fix or nit at most, never blocker unless it hides a bug): typing correctness (`any` leaks, required-vs-optional mismatches that the compiler silently accepts), dead code, stale docstrings/comments, naming, lint cleanliness on changed files.
+5. **Frontend behavior.** Only when the diff touches UI code. Attack what the user experiences, not style:
+   - *Effects and async*: missing or stale dependencies, no cleanup (listeners, timers, subscriptions, aborted requests), an effect doing an event handler's job, a response from a stale request overwriting a newer one, state set after unmount.
+   - *Server state* (query caches such as TanStack Query or SWR): cache keys missing a variable they depend on, mutations that do not invalidate or update what they change, optimistic updates with no rollback.
+   - *Client stores*: selectors that return a new object or array each call and re-render every subscriber, state that should reset between screens or sessions but does not.
+   - *Async UI states*: loading, error, and empty paths that are missing or leave the UI ambiguous; double submits; controls still enabled mid-request.
+   - *Rendering cost*: unstable `key`s, work in render on hot paths, new object or function props that defeat an existing `memo`.
+   - *Accessibility*: clickable non-buttons without keyboard support, inputs without labels, focus not moved into or returned from dialogs and menus, icon-only buttons without an accessible name.
+   - *i18n*: user-visible strings hard-coded where the surrounding code uses translations.
+
+   The project profile's **review** file (see Inputs) names the actual stack, hot paths, and check commands. Verify with read-only checks scoped to the changed files; read a script before running it, since `format`-style scripts write and some check scripts start servers.
+6. **Language/idiom quality** (should-fix or nit at most, never blocker unless it hides a bug): typing correctness (`any` leaks, required-vs-optional mismatches that the compiler silently accepts), dead code, stale docstrings/comments, naming, lint cleanliness on changed files.
 
 ## Verification standard
 
@@ -56,24 +67,13 @@ Every finding needs a concrete failure scenario ("caller sends X → Y happens")
 
 ## Output
 
-Reviews go in the worktree's evidence folder, at `.evidence/reviews/<UTC timestamp>.json`. That is a symlink; the real bytes live under `$(git rev-parse --git-common-dir)/evidence/<worktree>/reviews/`, keyed by `<worktree>` = `$(basename "$(git rev-parse --show-toplevel)")`. This is the same store `validate-ticket` sets up, so a ticket's validation, evidence and reviews sit under one key instead of two parallel schemes — and the review survives the worktree being pruned, because `--git-common-dir` (not `--git-dir`) resolves to the main repository's `.git/` rather than a per-worktree dir that dies with it.
+Reviews go in the checkout's evidence store, under `.evidence/reviews/`. Set the store up with the `evidence` skill first — it is idempotent, so run it whether or not a ticket flow already did — so a ticket's validation, captures, and reviews sit under one key and the review survives the worktree being pruned.
 
-The setup is idempotent, so run it whether or not a ticket flow already created the folder. `info/exclude` must be the **common** one — git ignores the per-worktree copy — and the pattern has no trailing slash, which would match only directories and miss the symlink:
+Write the JSON to a UTC-timestamped file, then point `latest.json` at it so a later author session finds the current review without globbing and sorting:
 
 ```sh
-WT="$(basename "$(git rev-parse --show-toplevel)")"
-EVID="$(git rev-parse --git-common-dir)/evidence/$WT"
-mkdir -p "$EVID/reviews"
-ln -sfn "$EVID" .evidence
-EX="$(git rev-parse --git-common-dir)/info/exclude"
-mkdir -p "$(dirname "$EX")"
-grep -qxF '.evidence' "$EX" || echo '.evidence' >> "$EX"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"   # seconds, not minutes — two reviews of one diff collide otherwise
-```
-
-Write the JSON to `.evidence/reviews/$TS.json`, then point `latest.json` at it so a later author session finds the current review without globbing and sorting:
-
-```sh
+# write the JSON to .evidence/reviews/$TS.json, then:
 ln -sfn "$TS.json" .evidence/reviews/latest.json
 ```
 
