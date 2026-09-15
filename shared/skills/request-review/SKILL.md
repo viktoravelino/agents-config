@@ -1,11 +1,16 @@
 ---
 name: request-review
-description: Produce the copy-pasteable message asking the frontend team to review a PR. Use when the user asks to request a review, ping the review channel, or ask for eyes on a PR.
+description: Produce the copy-pasteable message asking the Langflow frontend or backend team to review a PR. Use when the user asks to request a review, ping the review channel, or ask for eyes on a PR in a Langflow repository.
+argument-hint: "[PR number or URL]"
 ---
 
 # Request review
 
-Output a ready-to-send message for the review channel. **You do not post it** — there is no channel integration here. Print the message and stop; the user sends it.
+Output a ready-to-send message for the Langflow review channel. **You do not post it** — there is no channel integration here. Print the message and stop; the user sends it.
+
+## Scope
+
+This channel, its team handles, and the Jira site below belong to Langflow work (`langflow-ai/*` repositories). For a PR anywhere else, say there is no review channel set up for that repo and stop — do not reuse the Langflow handles.
 
 ## Gather the links
 
@@ -30,21 +35,28 @@ Jira links use `https://datastax.jira.com/browse/<KEY>`.
 
 If there is genuinely no ticket, print the message without the `Jira:` line rather than inventing a key or leaving a placeholder — and mention that you dropped it.
 
+## Pick the team
+
+- `@langflow-fe` when the diff touches the frontend (`src/frontend/`).
+- `@langflow-be` when it touches the backend (`src/backend/`, `src/lfx/`).
+- Both, space-separated on the same line, when it touches both.
+
+Decide from `gh pr diff <n> --name-only`. If the split is unclear (only tests, docs, or CI), ask the user which team to ping.
+
 ## The message
 
 Print exactly this, in a single fenced code block so the user can copy it in one go:
-Choose between `@langflow-fe` for frontend or `@langflow-be` for backend or both depending on the PR. If you are unsure, ask the user which team to ping.
 
 ```
 PR: <pr-link>
 Jira: <jira-link>
-@langflow-fe 
+<team handle(s)>
 ```
 
 Rules:
 
 - Raw URLs, not markdown links — the channel renders its own previews.
-- `@langflow-fe` on its own last line, verbatim.
+- Team handle(s) on their own last line, verbatim.
 - Nothing else in the block. No title, no summary, no "please review" line. The links carry the context.
 
 ## After printing

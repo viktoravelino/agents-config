@@ -1,6 +1,7 @@
 ---
 name: validate-ticket
 description: Validate a Jira ticket before any work starts -- read the ticket and its linked issues, classify what it actually asks for (bug, feature, chore, spike), set up an isolated worktree with an evidence folder, check the claim against the code and a live environment, and write a verdict the follow-up work skill consumes. Use when the user says "validate this ticket", "check this ticket", or pastes a Jira key or URL before asking for work to start.
+argument-hint: "<ticket key or URL>"
 ---
 
 # Validate Ticket

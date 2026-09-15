@@ -1,11 +1,21 @@
 ---
 name: file-pr
 description: File a concise pull request. Use when the user asks to file, open, or create a PR.
+argument-hint: "[base branch]"
 ---
 
 # File PR
 
-Before filing, check whether a PR for this branch already exists. Review the diff locally against the latest `origin/release-*` branch to make sure its contents match the goal.
+Before filing, check whether a PR for this branch already exists (`gh pr view --json url,baseRefName`).
+
+Then settle the base branch, in this order:
+
+1. The one the user named.
+2. The base of the existing PR.
+3. In repos that cut `release-*` branches (Langflow does), the release the work targets. Several can be open at once — a patch line and the next release — so if the ticket, labels, or branch point do not make it obvious, ask rather than taking the newest.
+4. The repo's default branch: `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
+
+Fetch it, review `git diff origin/<base>...HEAD` to make sure the contents match the goal, and pass `--base <base>` when creating the PR.
 
 Do not mention jira tickets on the PR title or description unless the user explicitly asks for it. If the user wants to link a Jira ticket, add it to the PR description only as a trailing `Jira: [<ticket>](<link>)` line at the end of the description.
 
@@ -30,7 +40,7 @@ GOOD
 Never pass the description with `--body "..."`. Inline HTML, backticks and `$` get mangled by shell escaping, which silently corrupts the description. Write it to a temp file and use `--body-file`:
 
 ```bash
-gh pr create --title "…" --body-file /tmp/pr-body.md
+gh pr create --base <base> --title "…" --body-file /tmp/pr-body.md
 ```
 
 ## Images and screenshots
@@ -51,7 +61,7 @@ These do render:
 
 ### Preferred: host on the assets repo
 
-For screenshots, commit the image to the user's public assets repo and embed the raw URL. This is fully scriptable, permanent, and keeps binaries out of the Langflow diff.
+For screenshots, commit the image to the user's public assets repo and embed the raw URL. This is fully scriptable, permanent, and keeps binaries out of the product repo's diff.
 
 ```bash
 mkdir -p ~/projects/pr-assets/<repo>/<branch-slug>

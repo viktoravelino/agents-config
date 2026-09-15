@@ -1,6 +1,7 @@
 ---
 name: git-worktree
 description: This skill should be used when the user wants to manage Git worktrees - creating worktrees from local or remote branches, listing active worktrees with details, deleting worktrees, or switching between worktrees. Ideal for working on multiple branches simultaneously without stashing changes.
+argument-hint: "[list | create <branch> | delete <branch> | prune]"
 ---
 
 # Git Worktree Management

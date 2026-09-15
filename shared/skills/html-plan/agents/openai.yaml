@@ -1,0 +1,3 @@
+# Codex counterpart of `disable-model-invocation: true` in SKILL.md: explicit $html-plan only.
+policy:
+  allow_implicit_invocation: false

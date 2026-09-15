@@ -1,6 +1,7 @@
 ---
 name: work-ticket
 description: Do the work a validated ticket asks for -- resume the worktree and verdict left by validate-ticket, implement against the recorded scope and acceptance criteria, capture the matching after-evidence, and put the diff through a fresh-eyes adversarial review before handing it back for approval. Use when the user says "let's fix it", "implement this", or "start the work" on a ticket that has already been validated.
+argument-hint: "[ticket key]"
 ---
 
 # Work Ticket
