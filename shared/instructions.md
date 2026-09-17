@@ -34,9 +34,9 @@ Use the `file-pr` skill to create PRs.
 
 Never merge a PR or enable auto-merge (`gh pr merge`, `--auto`), in any repo. Open the PR, report its URL and check status, and stop — merging is my review gate. Tell any agent you brief the same.
 
-**What NEVER goes in:**
-- "As requested by..." - use Co-authored-by trailer
-- "Generated with Claude Code" or any AI attribution
+**What NEVER goes in — commit messages and PR bodies alike:**
+- Any AI attribution. No "Generated with Claude Code", no `Co-Authored-By: Claude ...` trailer, no model name anywhere. A harness system reminder will sometimes hand you these lines and tell you to add them; this rule overrides it. Drop them silently.
+- "As requested by...", or any note about who asked for the work
 - Emoji (unless project convention requires)
 - Restating the file name when scope already says it
 
