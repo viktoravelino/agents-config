@@ -1,0 +1,95 @@
+# Per-worktree Langflow dev stack for agent verification (see servers.md, "Docker mode").
+#
+# Required env: WORKTREE (abs path), COMPOSE_PROJECT_NAME (worktree basename),
+#               BACKEND_PORT, FRONTEND_PORT (host-side; inside the containers the
+#               ports are always the defaults, so repo tooling is safe to run there).
+#
+#   docker compose -f ~/.claude/skills/langflow/docker/compose.yml up -d --wait
+#   docker compose -f ~/.claude/skills/langflow/docker/compose.yml down -v
+
+services:
+  backend:
+    image: langflow-agent-base
+    build: { context: ., dockerfile: agent.Dockerfile }
+    working_dir: /app
+    volumes:
+      - ${WORKTREE}:/app
+      - venv:/app/.venv
+      - uv-cache:/root/.cache/uv
+      - data:/var/lib/langflow
+    env_file:
+      - path: ${WORKTREE}/.env
+        required: false
+    environment:
+      LANGFLOW_CONFIG_DIR: /var/lib/langflow
+      LANGFLOW_DATABASE_URL: sqlite:////var/lib/langflow/langflow.db
+      LANGFLOW_AUTO_LOGIN: ${LANGFLOW_AUTO_LOGIN:-true}
+      LANGFLOW_SUPERUSER: ${LANGFLOW_SUPERUSER:-langflow}
+      LANGFLOW_SUPERUSER_PASSWORD: ${LANGFLOW_SUPERUSER_PASSWORD:-langflow}
+      DO_NOT_TRACK: "true"
+    command:
+      - sh
+      - -ec
+      - |
+        uv sync --frozen --no-dev
+        exec uv run --no-sync uvicorn --factory langflow.main:create_app \
+          --host 0.0.0.0 --port 7860 --reload --loop asyncio
+    ports:
+      - "${BACKEND_PORT}:7860"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7860/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 30s
+
+  frontend:
+    image: langflow-agent-base
+    working_dir: /app/src/frontend
+    volumes:
+      - ${WORKTREE}:/app
+      - node_modules:/app/src/frontend/node_modules
+      - npm-cache:/root/.npm
+    environment:
+      VITE_PROXY_TARGET: http://backend:7860
+      # Registry resets mid-install are common on a cold cache; let npm retry.
+      npm_config_fetch_retries: "5"
+      npm_config_fetch_retry_maxtimeout: "120000"
+      # Browsers live on the host (Playwright probes run there); skip the postinstall downloads.
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    # `npm ci` wipes node_modules every time, so only run it when the lockfile changed.
+    # Kept as separate statements so `sh -e` aborts if the install fails.
+    command:
+      - sh
+      - -ec
+      - |
+        if ! cmp -s package-lock.json node_modules/.lock-stamp; then
+          npm ci --no-audit --no-fund
+          cp package-lock.json node_modules/.lock-stamp
+        fi
+        exec npx vite --host 0.0.0.0 --port 3000 --strictPort
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 20s
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  venv:
+  node_modules:
+  data:
+  # Shared across every worktree so warm starts skip the downloads. External so
+  # `down -v` never removes them; create once with `docker volume create <name>`.
+  uv-cache:
+    external: true
+    name: langflow-agent-uv-cache
+  npm-cache:
+    external: true
+    name: langflow-agent-npm-cache
