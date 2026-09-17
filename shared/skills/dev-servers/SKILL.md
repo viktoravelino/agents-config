@@ -84,3 +84,9 @@ for p in <ports you took>; do lsof -t -iTCP:$p -sTCP:LISTEN | xargs -r kill; don
 ```
 
 Remove the throwaway data dir unless it is evidence, and report what you stopped and removed.
+
+If the profile runs the stack under Docker Compose, the throwaway data lives in the project's named volumes, so teardown is `docker compose -p <project> down -v`, not `down` alone. A `down` without `-v` looks clean (no containers) but leaves the venv, `node_modules`, and data volumes behind, and they outlive the worktree. Volumes the profile marks as shared caches are external and are not touched by `down -v`; never prune volumes wholesale to get at the leftovers. To find stacks that were torn down without their volumes, list dangling volumes and exclude the profile's shared caches by name — they look dangling too whenever no stack is running, and their labels do not distinguish them:
+
+```sh
+docker volume ls -q --filter dangling=true | grep -v <shared cache name pattern>
+```

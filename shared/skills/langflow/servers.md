@@ -63,7 +63,14 @@ $COMPOSE down -v      # containers + this project's venv/node_modules/data volum
 $COMPOSE down         # containers only; next `up` is ~17 s
 ```
 
-The shared cache volumes are external and survive `down -v`. Removing a worktree should be followed by `down -v` for its project, or the ~2.5 GB of volumes stay behind (`docker system df -v | grep langflow` lists them).
+The shared cache volumes (`langflow-agent-uv-cache`, `langflow-agent-npm-cache`) and the `langflow-agent-base` image are external and survive `down -v`; keep them. Run `down -v` for a worktree's project **before** removing the worktree, or its ~2.5 GB of `<project>_venv`, `<project>_node_modules`, and `<project>_data` volumes stay behind with nothing left to own them. A stack started from the main checkout is project `langflow`, so its leftovers are `langflow_venv` and friends. To find and remove leftovers from any project:
+
+```sh
+docker volume ls -q --filter dangling=true | grep -v -- '-agent-'   # review the list
+docker volume rm <those volumes>
+```
+
+The shared caches show up as dangling whenever no stack is running, and they carry compose labels like any other volume, so the name filter is the only thing keeping them out of that list.
 
 ## Host mode (fallback)
 

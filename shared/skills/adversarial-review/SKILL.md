@@ -19,6 +19,8 @@ Resolve the review scope in this order:
 1. Explicit target from the user: PR number (`gh pr diff <n>`), commit range, branch (`git diff <base>...HEAD`), or file list.
 2. Default: the uncommitted working-tree diff (`git diff` plus `git diff --cached`; mention untracked files but review them only if clearly part of the change).
 
+Reviewing a branch or PR does not need a checkout: `git fetch` and diff against `origin/<branch>` from wherever you are. If the reviewer genuinely has to run code from that branch and the branch is already checked out in another worktree, use a detached review worktree per `git-worktree` — never a copy of the branch under a new name.
+
 Also collect (ask only if genuinely unavailable):
 
 - **Intent**: what the diff claims to do — from the user, PR description, commit messages, or linked ticket. The review attacks the gap between claim and code.

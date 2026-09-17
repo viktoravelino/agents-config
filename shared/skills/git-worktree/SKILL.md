@@ -13,7 +13,8 @@ Worktrees let several branches be checked out at once without stashing. Run ever
 - **Location**: a sibling of the main checkout, `../<project>-<name>`, where `<project>` is `basename "$(git rev-parse --show-toplevel)"` of the main checkout.
 - **Name**: the ticket key for ticket work (`myapp-PROJ-123`), otherwise the branch name with `/` replaced by `-`.
 - **Ticket branches**: `<type>/<KEY>-<slug>`, where the type comes from the work — `fix/`, `feat/`, `chore/`, `spike/` — and the slug is a few words of the summary (`fix/PROJ-123-temp-file-cleanup`).
-- **One worktree per ticket.** If `git worktree list` already shows one for the key, reuse it instead of creating a second.
+- **One worktree per ticket, and one per branch.** If `git worktree list` already shows one for the key or for the branch, reuse it instead of creating a second.
+- **Never rename a branch to get around a checkout conflict.** Git refuses to check out a branch that another worktree already has. The fix is to use that worktree, or a detached checkout for a read-only look (below) — not a new branch with a suffix (`-review`, `-trim`, `-2`). A suffixed branch becomes the one that gets pushed while the original worktree goes stale, and the PR ends up with two local branches nobody can tell apart.
 
 ## Create
 
@@ -33,7 +34,13 @@ git worktree add --track -b <branch> "$MAIN/../$PROJECT-<name>" origin/<branch>
 
 # Existing local branch
 git worktree add "$MAIN/../$PROJECT-<name>" <branch>
+
+# Read-only look at a branch that is already checked out elsewhere (reviews)
+git fetch origin <branch>
+git worktree add --detach "$MAIN/../$PROJECT-<name>-review" origin/<branch>
 ```
+
+The detached form is for reviewing only: nothing is committed there, and it is removed when the review is done. If work has to happen on the branch, it happens in the worktree that already has it.
 
 For ticket work, `<base>` is the branch the work targets — see `file-pr` for how to settle it.
 
@@ -68,11 +75,13 @@ Show path, branch, and short HEAD per worktree, and mark the current one.
 
 ```sh
 git -C <worktree> status --short          # anything uncommitted?
+# tear down the worktree's isolated stack first, volumes included (see below)
 git worktree remove <worktree>
 git branch -d <branch>                    # only if the user wants the branch gone too
 ```
 
 - If the worktree has uncommitted or unpushed work, show it and ask before removing. Never `--force` or `rm -rf` a worktree on your own.
+- If an isolated stack was started for the worktree (`dev-servers`), tear it down **before** removing the directory, and remove its named volumes with it — a compose project keeps its venv, `node_modules`, and data volumes after the worktree is gone, and nothing else will ever clean them. The project profile's servers file has the exact command; for Langflow it is `docker compose -p <worktree basename, lower-cased> down -v`.
 - The worktree's evidence survives removal (it lives under the common git dir). Say so if the user expects it to be gone.
 
 ## Prune
