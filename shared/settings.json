@@ -1,7 +1,4 @@
 {
-  "model": "opus[1m]",
-  "tui": "fullscreen",
-  "skipDangerousModePermissionPrompt": true,
   "permissions": {
     "allow": [
       "Bash(git diff:*)",
@@ -20,5 +17,9 @@
       "Bash(handbill list:*)",
       "Bash(sqlite3:*)"
     ]
-  }
+  },
+  "model": "opus[1m]",
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark"
 }
