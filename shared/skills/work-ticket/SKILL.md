@@ -41,9 +41,11 @@ underneath you. Then go.
 git rev-parse --show-toplevel && git branch --show-current && git status --short
 ```
 
-**Cold session** (a new session, or the validation has scrolled out of context): read
-`.evidence/validation.json` in the worktree and treat it as the brief. `workspace` says
-where to work, `findings` is the diagnosis, `scope` is the plan, `acceptance_criteria` is
+**Cold session** (a new session, or the validation has scrolled out of context): find the
+worktree by branch, not by directory name — a T3 Code worktree lives under
+`~/.t3/worktrees/` with an opaque name, so match the ticket key in the branch column of
+`git worktree list`. Then read `.evidence/validation.json` there and treat it as the brief.
+`workspace` says where to work, `findings` is the diagnosis, `scope` is the plan, `acceptance_criteria` is
 the definition of done, `tests_affected` is work you owe. Skim `VALIDATION.md` for the
 reasoning behind them.
 

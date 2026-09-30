@@ -13,8 +13,33 @@ Worktrees let several branches be checked out at once without stashing. Run ever
 - **Location**: a sibling of the main checkout, `../<project>-<name>`, where `<project>` is `basename "$(git rev-parse --show-toplevel)"` of the main checkout.
 - **Name**: the ticket key for ticket work (`myapp-PROJ-123`), otherwise the branch name with `/` replaced by `-`.
 - **Ticket branches**: `<type>/<KEY>-<slug>`, where the type comes from the work — `fix/`, `feat/`, `chore/`, `spike/` — and the slug is a few words of the summary (`fix/PROJ-123-temp-file-cleanup`).
-- **One worktree per ticket, and one per branch.** If `git worktree list` already shows one for the key or for the branch, reuse it instead of creating a second.
+- **One worktree per ticket, and one per branch.** If `git worktree list` already shows one for the key or for the branch, reuse it instead of creating a second. A T3 Code thread worktree counts (see below).
 - **Never rename a branch to get around a checkout conflict.** Git refuses to check out a branch that another worktree already has. The fix is to use that worktree, or a detached checkout for a read-only look (below) — not a new branch with a suffix (`-review`, `-trim`, `-2`). A suffixed branch becomes the one that gets pushed while the original worktree goes stale, and the PR ends up with two local branches nobody can tell apart.
+
+## Inside a T3 Code thread
+
+T3 Code can give a thread its own worktree before the agent starts. Check for one before
+creating anything:
+
+```sh
+case "$(git rev-parse --show-toplevel)" in "$HOME/.t3/worktrees/"*) echo "T3 worktree" ;; esac
+```
+
+When it matches, the worktree already exists — reuse it in place and skip the Create
+section entirely (no sibling directory, no env copy: the project's setup action copied the
+env files). Three things still need doing:
+
+- **Rename the branch to the convention.** T3 names it `t3code/<slug>` from the first
+  message; the sidebar follows a rename. `git branch -m <type>/<KEY>-<slug>`. If the branch
+  still looks temporary (`t3code/<8 hex>`), T3 has not renamed it yet and may try to right
+  after you do; its attempt fails harmlessly, so rename anyway.
+- **Check the base.** T3 cuts the worktree from whatever the main checkout has, which for
+  a release-branch project is often not the ticket's base. While the worktree has no commits
+  and no changes, move it: `git fetch origin <base> && git reset --hard origin/<base>`.
+  Once there is work on it, rebase instead.
+- **Say so.** Tell the user the branch and that the T3 worktree was reused, not a new one.
+
+Outside T3 (the top level is anywhere else), continue with Create.
 
 ## Create
 

@@ -16,5 +16,6 @@ Project-specific settings for the generic workflow skills. Each file below overr
 | [servers.md](servers.md) | `dev-servers` | Ports, start commands, hazards, Playwright probe config |
 | [review.md](review.md) | `adversarial-review` | Frontend stack, hot paths, read-only check commands |
 | [workflow.md](workflow.md) | `file-pr`, `request-review`, `standup` | Base branches, review channel, Jira project, standup scope |
+| [t3.json](t3.json) | T3 Code (not a skill) | Worktree-per-thread default, env-file copy on worktree create, Docker stack up/down scripts with a preview URL |
 
 Jira field conventions for the `LE` board live in `acli-jira/boards.md` (local only).

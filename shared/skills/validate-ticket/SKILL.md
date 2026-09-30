@@ -72,9 +72,11 @@ component, stale description. It goes in the verdict as suggestions; you do not 
 
 ## 2. Set up the workspace
 
-Default to an isolated ticket worktree so validation never dirties the main checkout —
-create it (or reuse the existing one for this key) with the `git-worktree` ticket
-convention, branched from a freshly fetched base.
+Default to an isolated ticket worktree so validation never dirties the main checkout.
+Detect the workspace first with the `git-worktree` skill: inside a T3 Code thread the
+worktree already exists and is reused in place (branch renamed, base checked); otherwise
+create it, or reuse the existing one for this key, with the ticket convention, branched
+from a freshly fetched base.
 
 Skip the worktree only when the user already has servers running against another checkout
 and wants validation there. Say explicitly which tree you validated in — it is part of the

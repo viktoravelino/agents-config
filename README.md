@@ -85,6 +85,22 @@ drops the manifest entry and asks whether the directory stays (it
 becomes a skill authored here) or goes; `--keep` / `--delete` answer that
 non-interactively. Skills without a manifest entry are authored here.
 
+## T3 Code project files
+
+A profile can also carry a `t3.json` for [T3 Code](https://t3.codes). T3 reads
+the file through its workspace file service, which resolves symlinks and
+refuses anything outside the checkout, so it has to be a real copy. It is
+copied by hand into the main checkout and kept out of the repo's index via
+`.git/info/exclude` (`install.sh` does not manage it):
+
+```bash
+cp ~/projects/agents-config/shared/skills/langflow/t3.json ~/projects/langflow/t3.json
+echo t3.json >> ~/projects/langflow/.git/info/exclude
+```
+
+Re-run the copy after editing the file here. T3 reads it from the main
+checkout only, so worktrees need no copy.
+
 ## Also here
 
 - `claude-heartbeat/` — timer that keeps Claude usage blocks chained (see its README).
