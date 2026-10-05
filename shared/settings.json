@@ -18,7 +18,7 @@
       "Bash(sqlite3:*)"
     ]
   },
-  "model": "opus[1m]",
+  "model": "claude-fable-5-1",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark"

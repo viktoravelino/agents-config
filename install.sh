@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTRUCTIONS_SOURCE="$SCRIPT_DIR/shared/instructions.md"
 SHARED_SKILLS_DIR="$SCRIPT_DIR/shared/skills"
+# Claude-only: subagent definitions (Codex has no equivalent), linked one file each.
+SHARED_AGENTS_DIR="$SCRIPT_DIR/shared/agents"
 CODEX_INSTRUCTIONS_TARGET="$HOME/.codex/AGENTS.md"
 CLAUDE_INSTRUCTIONS_TARGET="$HOME/.claude/CLAUDE.md"
 # Claude-only: Codex has no settings.json equivalent. Runtime permission approvals
@@ -13,12 +15,14 @@ SETTINGS_SOURCE="$SCRIPT_DIR/shared/settings.json"
 CLAUDE_SETTINGS_TARGET="$HOME/.claude/settings.json"
 CODEX_SKILLS_DIR="$HOME/.agents/skills"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
+CLAUDE_AGENTS_DIR="$HOME/.claude/agents"
 BACKUP_SUFFIX=".pre-agents-config-bak"
 
 DRY_RUN=0
 DO_INSTRUCTIONS=1
 DO_SKILLS=1
 DO_SETTINGS=1
+DO_AGENTS=1
 
 for arg in "$@"; do
   case "$arg" in
@@ -28,14 +32,22 @@ for arg in "$@"; do
     --skills-only)
       DO_INSTRUCTIONS=0
       DO_SETTINGS=0
+      DO_AGENTS=0
       ;;
     --instructions-only)
       DO_SKILLS=0
       DO_SETTINGS=0
+      DO_AGENTS=0
       ;;
     --settings-only)
       DO_INSTRUCTIONS=0
       DO_SKILLS=0
+      DO_AGENTS=0
+      ;;
+    --agents-only)
+      DO_INSTRUCTIONS=0
+      DO_SKILLS=0
+      DO_SETTINGS=0
       ;;
     -h|--help)
       echo "Usage: ${BASH_SOURCE[0]##*/} [options]"
@@ -44,8 +56,9 @@ for arg in "$@"; do
       echo "  shared/instructions.md -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md"
       echo "  shared/skills/*        -> ~/.agents/skills/, ~/.claude/skills/"
       echo "  shared/settings.json   -> ~/.claude/settings.json"
+      echo "  shared/agents/*.md     -> ~/.claude/agents/"
       echo
-      echo "Skills are synced, not just added: links pointing at a skill that no"
+      echo "Skills and agents are synced, not just added: links pointing at one that no"
       echo "longer exists are removed. Anything not managed by this script is"
       echo "left alone, and existing real files are backed up before linking."
       echo
@@ -55,8 +68,9 @@ for arg in "$@"; do
       echo
       echo "  -n, --dry-run           show what would change, touch nothing"
       echo "      --skills-only       skip the instructions file"
-      echo "      --instructions-only skip skills and settings"
+      echo "      --instructions-only skip skills, agents and settings"
       echo "      --settings-only     only the Claude settings file"
+      echo "      --agents-only       only the Claude agent definitions"
       echo "  -h, --help              show this help"
       echo
       echo "Set NO_COLOR=1 to disable colored output."
@@ -135,6 +149,13 @@ compute_name_width() {
 
   if [ "$DO_SETTINGS" -eq 1 ]; then
     track_name_width "$(pretty_path "$CLAUDE_SETTINGS_TARGET")"
+  fi
+
+  if [ "$DO_AGENTS" -eq 1 ]; then
+    for entry in "$SHARED_AGENTS_DIR"/*.md; do
+      [ -e "$entry" ] || continue
+      track_name_width "$(basename "$entry")"
+    done
   fi
 
   if [ "$DO_SKILLS" -eq 1 ]; then
@@ -248,6 +269,53 @@ sync_skills_target() {
   done
 }
 
+# Removes links this script owns (symlinks into SHARED_AGENTS_DIR) whose
+# agent file has been deleted or renamed. Other agent files are left alone.
+prune_stale_agent_links() {
+  local target_dir="$1"
+  local entry link_dest
+
+  [ -d "$target_dir" ] || return 0
+
+  for entry in "$target_dir"/*; do
+    [ -L "$entry" ] || continue
+
+    case "$entry" in
+      *"$BACKUP_SUFFIX"*) continue ;;
+    esac
+
+    link_dest="$(readlink "$entry")"
+
+    case "$link_dest" in
+      "$SHARED_AGENTS_DIR"/*) ;;
+      *) continue ;;
+    esac
+
+    if [ -f "$link_dest" ]; then
+      continue
+    fi
+
+    [ "$DRY_RUN" -eq 1 ] || rm "$entry"
+    removed_count=$((removed_count + 1))
+    status_line "$RED" "-" "$(basename "$entry")" "$ACT_REMOVE, source is gone"
+  done
+}
+
+sync_agents_target() {
+  local target_dir="$1" label="$2"
+  local agent_file
+
+  section "$label" "$(pretty_path "$target_dir")"
+
+  prune_stale_agent_links "$target_dir"
+
+  for agent_file in "$SHARED_AGENTS_DIR"/*.md; do
+    [ -f "$agent_file" ] || continue
+    ensure_link "$agent_file" "$target_dir/$(basename "$agent_file")" \
+      "$(basename "$agent_file")"
+  done
+}
+
 if [ "$DO_INSTRUCTIONS" -eq 1 ] && [ ! -f "$INSTRUCTIONS_SOURCE" ]; then
   printf '%sMissing instructions file: %s%s\n' \
     "$RED" "$(pretty_path "$INSTRUCTIONS_SOURCE")" "$RESET" >&2
@@ -257,6 +325,12 @@ fi
 if [ "$DO_SETTINGS" -eq 1 ] && [ ! -f "$SETTINGS_SOURCE" ]; then
   printf '%sMissing settings file: %s%s\n' \
     "$RED" "$(pretty_path "$SETTINGS_SOURCE")" "$RESET" >&2
+  exit 1
+fi
+
+if [ "$DO_AGENTS" -eq 1 ] && [ ! -d "$SHARED_AGENTS_DIR" ]; then
+  printf '%sMissing shared agents directory: %s%s\n' \
+    "$RED" "$(pretty_path "$SHARED_AGENTS_DIR")" "$RESET" >&2
   exit 1
 fi
 
@@ -308,6 +382,10 @@ fi
 if [ "$DO_SKILLS" -eq 1 ]; then
   sync_skills_target "$CODEX_SKILLS_DIR" "Codex skills"
   sync_skills_target "$CLAUDE_SKILLS_DIR" "Claude skills"
+fi
+
+if [ "$DO_AGENTS" -eq 1 ]; then
+  sync_agents_target "$CLAUDE_AGENTS_DIR" "Claude agents"
 fi
 
 printf '\n%s%s%s %s%d linked · %d removed · %d unchanged' \

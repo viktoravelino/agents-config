@@ -7,6 +7,7 @@ from this repository so edits here take effect immediately.
 shared/instructions.md     -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md
 shared/skills/<name>/      -> ~/.agents/skills/<name>, ~/.claude/skills/<name>
 shared/settings.json       -> ~/.claude/settings.json  (Claude only)
+shared/agents/<name>.md    -> ~/.claude/agents/<name>.md  (Claude only)
 shared/skill-sources.json     where the skills copied from other repos came from
 ```
 
@@ -14,7 +15,7 @@ shared/skill-sources.json     where the skills copied from other repos came from
 
 ```bash
 ./install.sh          # link everything; -n to preview
-                      # --skills-only / --instructions-only / --settings-only
+                      # --skills-only / --instructions-only / --settings-only / --agents-only
 ```
 
 `settings.json` is Claude-only — Codex has no equivalent. Machine-local

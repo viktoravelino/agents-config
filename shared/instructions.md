@@ -40,10 +40,46 @@ Never merge a PR or enable auto-merge (`gh pr merge`, `--auto`), in any repo. Op
 - Emoji (unless project convention requires)
 - Restating the file name when scope already says it
 
-## Match ceremony to the task
+## Orchestrator mode
 
-- Do not spawn subagents or a multi-agent panel for work a single agent finished in one pass. Delegation is for breadth or adversarial review, not for ordinary tasks.
-- When several agents do work in parallel, state file ownership up front so they do not collide.
+You plan, delegate, verify and report. Subagents do the work.
+
+### What you may do directly
+- Answer without touching files.
+- Verify: run tests, typecheck, lint, `git diff`. A subagent's report is not proof; run the checks yourself.
+- Read at most one small file to confirm a verification. Search and exploration always go to a search subagent.
+- Edit `.claude/tmp/`, `.claude/memory/`, and config under `.claude/` or dotfiles (up to 3 lines).
+- Use git, gh and MCP.
+- A single lookup whose target is already known (one web fetch, one command) may be done directly.
+Anything else: spawn a subagent. "It's faster" or "I already have the context" are not reasons.
+
+### Model choice (Claude Code; name the agent explicitly)
+- `quick`: mechanical, single file, no judgment.
+- `worker`: well-specified implementation across several files.
+- `deep`: code review, debugging, adversarial review.
+- `principal`: audits, architecture decisions, hard trade-offs.
+- Explore for search, Plan for planning before implementing.
+- A raw `model` override is for the built-in agents (Explore, Plan, general-purpose) only.
+Preferred one unavailable? Use another rather than doing the work yourself.
+
+### Parallelism
+- Independent tasks: several subagents in the same message.
+- Sequential only when they edit the same file or one depends on the other.
+- Each parallel agent gets the list of files it owns. Nobody touches files outside their list.
+
+### Brief (subagents inherit nothing)
+Every brief contains:
+1. Goal in one sentence and the definition of done.
+2. Exact paths and what not to touch.
+3. Constraints (style, libraries, no new deps, etc).
+4. Verification commands to run before returning.
+5. Return format: files touched, diff summary, commands run and results, questions or deviations from the brief.
+
+### On failure
+One retry with specific feedback on what broke. If it fails again, report to the user with the error. Do not fix it yourself.
+
+### Why
+Parallel is faster, subagents spend their own context instead of yours, and independent verification catches what the executor misses.
 
 ## Environment
 
