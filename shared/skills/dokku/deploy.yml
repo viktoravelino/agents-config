@@ -1,0 +1,40 @@
+# Template: copy to <repo>/.github/workflows/deploy-<app>.yml and replace <app> and <path>.
+# Deploys <path>/ to the <app> Dokku app; the runner reaches Dokku over Tailscale.
+# One workflow per Dokku app, each with its own paths filter and concurrency group.
+name: Deploy <app>
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - <path>/**
+      - .github/workflows/deploy-<app>.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-<app>
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Dokku needs history to accept the push
+
+      # Do not add `args: --accept-routes`: v4 already does and a duplicate fails `tailscale up`.
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - uses: dokku/github-action@v1.10.0
+        with:
+          git_remote_url: ssh://dokku@192.168.2.13:22/<app>
+          ssh_private_key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+          branch: main # the action's default is master
