@@ -1,8 +1,1 @@
-{
-  "handbill": {
-    "repo": "git@github.com:viktoravelino/handbill.git",
-    "path": "skills/handbill",
-    "ref": "main",
-    "commit": "eb4312d385f60941cce850d65178493f54e9cf7d"
-  }
-}
+{}

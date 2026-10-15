@@ -35,7 +35,7 @@ that project's profile.
 | Workflows | `validate-ticket`, `work-ticket`, `diagnose`, `adversarial-review`, `file-pr`, `request-review`, `standup` |
 | Shared helpers | `evidence` (where proof lives), `dev-servers` (running an app in isolation), `git-worktree`, `acli-jira` |
 | Project profiles | `langflow` |
-| Documents | `design-artifact`, `html-plan`, `handbill` |
+| Documents | `design-artifact`, `html-plan` |
 
 Helpers and profiles set `user-invocable: false`: other skills pull them in,
 so they stay out of the `/` menu.
@@ -64,13 +64,13 @@ in gitignored files, as `acli-jira/boards.md` does.
 
 ## Skills from other repositories
 
-Some skills are copies of a directory in another repository (for example
-`handbill` comes from `viktoravelino/handbill`). `shared/skill-sources.json`
+Some skills are copies of a directory in another repository. No skill is
+currently synced from upstream. `shared/skill-sources.json`
 records the repo, path, ref, and the upstream commit each copy was taken from.
 
 ```bash
 ./sync-skills.sh check                 # anything behind upstream or edited locally?
-./sync-skills.sh update handbill       # pull upstream in and bump the pin
+./sync-skills.sh update <name>         # pull upstream in and bump the pin
 ./sync-skills.sh add <repo> <path>     # copy a skill in; asks whether to track its source
 ./sync-skills.sh remove <name>         # stop tracking; asks whether to keep or delete the files
 ```

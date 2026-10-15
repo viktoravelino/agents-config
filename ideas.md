@@ -29,10 +29,7 @@ Every skill (validate-ticket, work-ticket, git-worktree, dev-servers, langflow) 
 
 **Smaller cleanups**
 
-- The `mod+a` keybinding points at a script id `asdas` that does not exist. Rebind it to a real script, such as the Langflow stack starter, once `t3.json` exists.
 - Skills are hidden from the `/` menu (`showSkillsInSlashMenu` is off). Turning it on gives you `$validate-ticket` autocomplete in the composer instead of typing it.
-- The state database is 2.3 GB for 381 threads. Deleting or archiving old settled threads, then vacuuming, is worth trying before it slows the sidebar.
-- The `claude/` and `codex/` folders in agents-config are empty. Either populate them with provider-specific bits, such as the hooks above for Claude, or remove them so the README's mental model stays honest.
 - Shared settings still pin `opus[1m]` as the CLI model while T3 defaults Langflow to Opus 5 and everything else to whatever was last picked. Decide one default and set it in both places.
 - Your prompt-title and branch-name generation runs on Sonnet 5, which is right. Keep it.
 

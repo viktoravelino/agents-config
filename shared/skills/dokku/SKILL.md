@@ -11,7 +11,7 @@ The maintainer's app host: Dokku v0.38.31 on a VM at `192.168.2.13`, reachable o
 
 ## House rules
 
-- Never print secret values, and never print or `cat` `~/projects/homelab/config/media-stack/.env` (it holds unrelated secrets). A new secret created for the lab is also appended there as a `KEY=value` line with a `#` comment line above it.
+- Never print secret values, and never print or `cat` `~/projects/homelab/.env` (the git-ignored, mode 0600 file rendered from the committed sops/age-encrypted `~/projects/homelab/.sops.env` by `scripts/workstation/render-secrets.sh`; it holds unrelated secrets). `.env` is never edited by hand: a new or rotated lab secret goes in through `sops .sops.env` (edit), then commit, then re-run the render script. `docs/secrets.md` in that repo inventories the names. Hand decryption must pass `--input-type dotenv --output-type dotenv`, or the whole file prints in clear.
 - Never merge PRs. Workflow changes go through a PR the maintainer merges.
 - Confirm with the maintainer before anything outward-facing (a new public hostname) or destructive (`apps:destroy`, removing a hostname or DNS record).
 - Config values (`config:show`, `config:export`) are secrets; `config:keys <app>` is safe.
@@ -28,10 +28,12 @@ ssh dokku ps:report <app>
 Commands that need root, such as `ssh-keys:add`, are refused through the `dokku` user. Run them as:
 
 ```bash
-ssh -i ~/.ssh/homelab ubuntu@192.168.2.13 'sudo dokku ssh-keys:add <name> /path/to/key.pub'
+ssh -i ~/.ssh/lab ubuntu@192.168.2.13 'sudo dokku ssh-keys:add <name> /path/to/key.pub'
 ```
 
-URLs: LAN `http://<app>.192.168.2.13.sslip.io`; public `https://<name>.vkav.dev` via a Cloudflare Tunnel (TLS ends at Cloudflare, Dokku serves plain HTTP, there is no certificate plugin).
+The key on this Mac is `~/.ssh/lab` (the MacBook Air and the workbench VM name it `~/.ssh/homelab`). Prefer the `dokku` alias, defined in `~/.ssh/config.d/lab`, over spelling out the key.
+
+URLs: on the LAN an app answers only to its public hostname, so send that as the `Host` header to `192.168.2.13:80` (`curl -H 'Host: <name>.vkav.dev' http://192.168.2.13/`); the old `<app>.192.168.2.13.sslip.io` names are retired. Public `https://<name>.vkav.dev` via a Cloudflare Tunnel (TLS ends at Cloudflare, Dokku serves plain HTTP, there is no certificate plugin).
 
 ## Which deploy model fits the repo
 
@@ -137,7 +139,7 @@ Other properties: `initialDelay`, `timeout`, `wait`, `port`, `content`, `command
   ```
 
   Working file: `~/projects/insta-down/frontend/nginx.conf`. The same pattern also lets the consumer's first deploy succeed when the upstream name does not resolve yet; without it the first deploy fails.
-- Builds run on the VM (about 40 s for a trivial image) and compete with running apps for 2 cores and 4 GB. Pushing a remote always rebuilds that app, even with no change.
+- Builds run on the VM (about 40 s for a trivial image) and compete with running apps for 2 cores and 8 GB (balloon floor 4 GB). Pushing a remote always rebuilds that app, even with no change.
 - `ssh-keys:add` needs root (see Access).
 - `Unable to select a buildpack` means Dokku did not find a Dockerfile at the build dir: check the root, `builder:report <app>` and `build-dir`.
 
@@ -160,7 +162,7 @@ Template: [deploy.yml](deploy.yml), one workflow per Dokku app with its own `pat
 - Three repository secrets, the same in every repo: `DOKKU_DEPLOY_KEY`, `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`. One shared CI key is registered in Dokku as `ci-github`. Wire a new repo by piping from the maintainer's local secrets file into `gh secret set`, nothing printed:
 
 ```bash
-E=~/projects/homelab/config/media-stack/.env
+E=~/projects/homelab/.env
 grep '^DOKKU_CI_DEPLOY_KEY_B64=' $E | cut -d= -f2- | base64 -d | gh secret set DOKKU_DEPLOY_KEY --repo <owner>/<repo>
 grep '^TS_OAUTH_CLIENT_ID=' $E | cut -d= -f2- | tr -d '\n' | gh secret set TS_OAUTH_CLIENT_ID --repo <owner>/<repo>
 grep '^TS_OAUTH_SECRET=' $E | cut -d= -f2- | tr -d '\n' | gh secret set TS_OAUTH_SECRET --repo <owner>/<repo>
@@ -171,7 +173,7 @@ grep '^TS_OAUTH_SECRET=' $E | cut -d= -f2- | tr -d '\n' | gh secret set TS_OAUTH
 ## Verify a deploy
 
 1. `ssh dokku ps:report <app>`: `Deployed: true`, processes running.
-2. `curl -s -o /dev/null -w '%{http_code}\n' http://<app>.192.168.2.13.sslip.io/` returns the expected page (a `proxy:disable` app has no LAN URL; test it through its consumer).
+2. `curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: <name>.vkav.dev' http://192.168.2.13/` returns the expected page (a `proxy:disable` app has no LAN hostname; test it through its consumer).
 3. Multi-service: an internal route through the consumer works **after redeploying the upstream** (push the upstream again, wait over a minute, call it again). This is the check that catches the 502 gotcha.
 4. Published: `curl -sI https://<name>.vkav.dev/` gives 200 and `server: cloudflare`.
 5. CI: the workflow run is green.
