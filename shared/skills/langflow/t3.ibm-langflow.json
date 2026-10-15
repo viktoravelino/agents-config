@@ -11,24 +11,24 @@
     },
     {
       "name": "Setup frontend mirror",
-      "command": "./scripts/dev-frontend.sh",
+      "command": "mkdir -p .frontend-dev; m=.frontend-dev/.setup-running; touch \"$m\"; trap 'rm -f \"$m\"' EXIT; ./scripts/dev-frontend.sh",
       "icon": "build",
       "runOnWorktreeCreate": true,
       "async": true
     },
     {
       "name": "Dev (backend + frontend, per-worktree ports)",
-      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); echo \"==> backend http://localhost:$p  frontend http://localhost:$((p+1))\"; make dev BACKEND_PORT=$p VITE_PORT=$((p+1)) LANGFLOW_PUBLIC_URL=http://localhost:$p",
+      "command": "while [ -e .frontend-dev/.setup-running ]; do echo \"waiting for frontend mirror setup...\"; sleep 10; done; p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); echo \"==> backend http://localhost:$p  frontend http://localhost:$((p+1))\"; make dev BACKEND_PORT=$p VITE_PORT=$((p+1)) LANGFLOW_PUBLIC_URL=http://localhost:$p",
       "icon": "play"
     },
     {
       "name": "QA stack up (per-worktree ports)",
-      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); echo \"==> editor UI http://localhost:$((p+11))  editor API http://127.0.0.1:$((p+10))  control plane http://127.0.0.1:$((p+12))  serving http://127.0.0.1:$((p+13))\"; make qa-stack EDITOR_BACKEND_PORT=$((p+10)) EDITOR_FRONTEND_PORT=$((p+11)) CP_PORT=$((p+12)) SERVING_PORT=$((p+13)) && make qa-stack-seed EDITOR_BACKEND_PORT=$((p+10)) EDITOR_FRONTEND_PORT=$((p+11)) CP_PORT=$((p+12)) SERVING_PORT=$((p+13))",
+      "command": "while [ -e .frontend-dev/.setup-running ]; do echo \"waiting for frontend mirror setup...\"; sleep 10; done; p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); echo \"==> editor UI http://localhost:$((p+11))  editor API http://127.0.0.1:$((p+10))  control plane http://127.0.0.1:$((p+12))  serving http://127.0.0.1:$((p+13))\"; make qa-stack EDITOR_BACKEND_PORT=$((p+10)) EDITOR_FRONTEND_PORT=$((p+11)) CP_PORT=$((p+12)) SERVING_PORT=$((p+13)) QA_PROJECT=\"langflow-qa-$slug-$p\" && make qa-stack-seed EDITOR_BACKEND_PORT=$((p+10)) EDITOR_FRONTEND_PORT=$((p+11)) CP_PORT=$((p+12)) SERVING_PORT=$((p+13)) QA_PROJECT=\"langflow-qa-$slug-$p\"",
       "icon": "play"
     },
     {
       "name": "QA stack down",
-      "command": "make qa-stack-down",
+      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); make qa-stack-down QA_PROJECT=\"langflow-qa-$slug-$p\"",
       "icon": "configure",
       "runOnSettle": true
     },

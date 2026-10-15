@@ -11,12 +11,12 @@
     },
     {
       "name": "Stack up (Docker)",
-      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"langflow-$slug\" BACKEND_PORT=$p FRONTEND_PORT=$((p+1)); c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; docker volume create langflow-agent-uv-cache >/dev/null; docker volume create langflow-agent-npm-cache >/dev/null; docker image inspect langflow-agent-base >/dev/null 2>&1 || c build; echo \"==> backend http://localhost:$p  frontend http://localhost:$((p+1))\"; c up -d --wait --wait-timeout 900 && c logs -f",
+      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"langflow-$slug-$p\" BACKEND_PORT=$p FRONTEND_PORT=$((p+1)); c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; docker volume create langflow-agent-uv-cache >/dev/null; docker volume create langflow-agent-npm-cache >/dev/null; docker image inspect langflow-agent-base >/dev/null 2>&1 || c build; echo \"==> backend http://localhost:$p  frontend http://localhost:$((p+1))\"; c up -d --wait --wait-timeout 900 && c logs -f",
       "icon": "play"
     },
     {
       "name": "Stack down (Docker)",
-      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"langflow-$slug\" BACKEND_PORT=$p FRONTEND_PORT=$((p+1)); c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; c down -v",
+      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"langflow-$slug-$p\" BACKEND_PORT=$p FRONTEND_PORT=$((p+1)); c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; c down -v",
       "icon": "configure",
       "runOnSettle": true
     }

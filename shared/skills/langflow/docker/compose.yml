@@ -1,6 +1,6 @@
 # Per-worktree Langflow dev stack for agent verification (see servers.md, "Docker mode").
 #
-# Required env: WORKTREE (abs path), COMPOSE_PROJECT_NAME (worktree basename),
+# Required env: WORKTREE (abs path), COMPOSE_PROJECT_NAME (`langflow-<slug>-<port base>`, set by the caller),
 #               BACKEND_PORT, FRONTEND_PORT (host-side; inside the containers the
 #               ports are always the defaults, so repo tooling is safe to run there).
 #

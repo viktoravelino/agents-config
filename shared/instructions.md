@@ -60,7 +60,7 @@ Anything else: spawn a subagent. "It's faster" or "I already have the context" a
 Name the agent explicitly.
 - `quick`: mechanical, single file, no judgment.
 - `worker`: well-specified implementation across several files.
-- `deep`: debugging and judgment-heavy reading. Read-only by tool list; it reports, it does not fix. Adversarial review goes through the `adversarial-review` skill, which runs a read-only Explore agent with a model override.
+- `deep`: debugging and judgment-heavy reading. No Edit or Write tools; Bash is for running checks, never for changing files. It reports, it does not fix. Adversarial review goes through the `adversarial-review` skill, which delegates to a read-only Explore agent with a model override when fresh eyes are needed.
 - `principal`: audits, architecture decisions, hard trade-offs.
 - Explore for search, Plan for planning before implementing.
 - A raw `model` override is for the built-in agents (Explore, Plan, general-purpose) only.

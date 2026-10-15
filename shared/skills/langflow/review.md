@@ -30,3 +30,22 @@ npx tsc --noEmit --project tsconfig.json
 Not `npm run format` (writes) and not `npm run type-check` (starts `vite`).
 
 Backend, from the repo root: `uv run ruff check <files>`.
+
+## IBM-Langflow overlay
+
+`WatsonOrchestrate/IBM-Langflow` has a different layout:
+
+- `src/` — the EE Python package
+- `frontend-overrides/src/customization/` — frontend sources
+- `.frontend-dev/langflow` — generated mirror of the OSS frontend; never edit
+- `tests/`
+
+Read-only checks, from the repo root (read `Makefile` for anything else; do not invent targets):
+
+```sh
+make lint            # uv run ruff check .
+make test            # ./scripts/run-with-oss.sh pytest
+make test-frontend   # jest, config in frontend-overrides/jest.config.js
+```
+
+There is no typecheck target. `make test-frontend` sets up the mirror if it is missing.

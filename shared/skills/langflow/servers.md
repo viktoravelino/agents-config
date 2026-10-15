@@ -1,10 +1,10 @@
 # Langflow: running an isolated stack
 
-Applies the generic rules in `dev-servers` to Langflow. Two modes: **Docker mode** is preferred whenever `docker info` succeeds; **host mode** is the fallback. Ports, the credential check, and the Playwright probe config are the same in both.
+Applies the generic rules in `dev-servers` to Langflow. Two modes: **Docker mode** is preferred whenever `docker info` succeeds; **host mode** is the fallback. The credential check and the Playwright probe config are the same in both; ports differ (see below).
 
 ## Ports
 
-Host mode: backend `7861` (then `7862`, …), frontend `3001` (then `3002`, …). The user's own stack runs on `7860` and `3000`. Docker mode derives both from the worktree directory name (see "Start"), so concurrent worktrees do not collide; these are the *host-side* mappings, and inside the containers the ports are always the defaults.
+Host mode: backend `7861` (then `7862`, …), frontend `3001` (then `3002`, …). The user's own stack runs on `7860` and `3000`. Docker mode derives both from the worktree directory name (see "Start"), so concurrent worktrees rarely collide (500 hash buckets); if `up` fails with port already allocated, another worktree hashed to the same block. These are the *host-side* mappings, and inside the containers the ports are always the defaults.
 
 ## Credential check
 
@@ -25,12 +25,12 @@ Measured on this machine (OrbStack, arm64): base image build 22 s; first start o
 
 ### Start
 
-From the worktree root. The project name is `langflow-<slug>`, where the slug is the worktree basename lower-cased (not the branch, which can be renamed while the stack runs). Ports are `20000 + cksum(basename) % 500 * 20` for the backend and one more for the frontend, so every worktree gets its own volumes, containers and ports.
+From the worktree root. The port base is `p = 20000 + cksum(basename) % 500 * 20`, a 20-port block per worktree directory name (not the branch, which can be renamed while the stack runs). The T3 "Stack up (Docker)" script owns project `langflow-<slug>-<p>` on `p`/`p+1`; the agent never touches it. The agent's stack lives in its own namespace inside the same block: project `langflow-agent-<slug>-<p>`, backend `p+2`, frontend `p+3`, so it gets its own volumes, containers and ports. The slug is the basename lower-cased; the port base is appended because distinct directory names can sanitize to the same slug.
 
 ```sh
 COMPOSE="docker compose -f $HOME/.claude/skills/langflow/docker/compose.yml"
 p=$((20000 + $(basename "$PWD" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\n' '-')
-export WORKTREE="$PWD" COMPOSE_PROJECT_NAME="langflow-$slug" BACKEND_PORT=$p FRONTEND_PORT=$((p+1))
+export WORKTREE="$PWD" COMPOSE_PROJECT_NAME="langflow-agent-$slug-$p" BACKEND_PORT=$((p+2)) FRONTEND_PORT=$((p+3))
 
 docker volume create langflow-agent-uv-cache >/dev/null
 docker volume create langflow-agent-npm-cache >/dev/null
@@ -63,7 +63,7 @@ $COMPOSE down -v      # containers + this project's venv/node_modules/data volum
 $COMPOSE down         # containers only; next `up` is ~17 s
 ```
 
-The shared cache volumes (`langflow-agent-uv-cache`, `langflow-agent-npm-cache`) and the `langflow-agent-base` image are external and survive `down -v`; keep them. Run `down -v` for a worktree's project **before** removing the worktree, or its ~2.5 GB of `<project>_venv`, `<project>_node_modules`, and `<project>_data` volumes stay behind with nothing left to own them. The T3 "Stack down (Docker)" script does this (and runs on thread settle), using the same directory-derived project name. A stack started by hand from the main checkout is project `langflow-<checkout dir>`; older ones were named `langflow`, so their leftovers are `langflow_venv` and friends. To find and remove leftovers from any project:
+The shared cache volumes (`langflow-agent-uv-cache`, `langflow-agent-npm-cache`) and the `langflow-agent-base` image are external and survive `down -v`; keep them. Run `down -v` for a worktree's project **before** removing the worktree, or its ~2.5 GB of `<project>_venv`, `<project>_node_modules`, and `<project>_data` volumes stay behind with nothing left to own them. Tear down only `langflow-agent-*` projects; the user's T3 stack (`langflow-<slug>-<p>`) is torn down by the T3 "Stack down (Docker)" script, which runs on thread settle. Older stacks were named `langflow-<checkout dir>` or `langflow`, so their leftovers are `langflow_venv` and friends. To find and remove leftovers from any project:
 
 ```sh
 docker volume ls -q --filter dangling=true | grep -v -- '-agent-'   # review the list
@@ -129,10 +129,28 @@ Stop the listeners on `7861` and `3001` (or whichever you took). Remove `/tmp/<w
 
 ## Playwright
 
-Both modes: the probe config from `dev-servers` with `baseURL: "http://localhost:<FRONTEND_PORT>/"` (the host-side frontend port; `3001` in host mode), run on the host from `src/frontend` so `@playwright/test` and the repo's test utils (`tests/utils/...`) resolve. Browsers stay on the host; the Docker image deliberately has none.
+Both modes: the probe config from `dev-servers` with `baseURL: "http://localhost:<FRONTEND_PORT>/"` (the host-side frontend port: `p+3` for the Docker agent stack, `3001` in host mode), run on the host from `src/frontend` so `@playwright/test` and the repo's test utils (`tests/utils/...`) resolve. Browsers stay on the host; the Docker image deliberately has none.
 
 ```sh
 npx playwright test --config ../../.evidence/probes/ui-probe.config.ts
 ```
 
 In Docker mode, `src/frontend/node_modules` on the host is only needed for `@playwright/test` itself — if the worktree has none, `npm ci` there once, or point `NODE_PATH` at another checkout's `node_modules`.
+
+## IBM-Langflow overlay
+
+`WatsonOrchestrate/IBM-Langflow` has no `src/frontend`, `src/backend` or `src/lfx`, and `docker/compose.yml` assumes the OSS tree, so there is no Docker mode through it. The agent's isolated stack is host mode, in the same `p+2`/`p+3` namespace (the user's T3 "Dev" script owns `p`/`p+1`):
+
+```sh
+p=$((20000 + $(basename "$PWD" | cksum | cut -d' ' -f1) % 500 * 20))
+set -m   # job control: the background job becomes its own process group, pgid = $!
+make dev BACKEND_PORT=$((p+2)) VITE_PORT=$((p+3)) LANGFLOW_PUBLIC_URL=http://localhost:$((p+2)) \
+  > "/tmp/$(basename "$PWD")-dev.log" 2>&1 &
+echo $! > "/tmp/$(basename "$PWD")-dev.pid"
+```
+
+- Port overrides must be `make` command-line arguments: the Makefile does `-include .env` then `export`, so `.env` would beat environment variables.
+- The frontend mirror must exist first (`./scripts/dev-frontend.sh`); note `make dev` also runs `scripts/dev-frontend.sh --serve`.
+- `.env` comes from the main checkout via the T3 setup script, or `make init`.
+- Teardown: kill the supervisor process group you started (`kill -- -$(cat /tmp/<worktree>-dev.pid)`, valid because of `set -m`), not listeners by port.
+- Playwright: `baseURL` is `http://localhost:$((p+3))/`; run from `frontend-overrides` or the mirror at `.frontend-dev/langflow/src/frontend`, wherever `@playwright/test` resolves.

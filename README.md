@@ -101,7 +101,7 @@ cp ~/projects/agents-config/shared/skills/langflow/t3.json ~/projects/langflow/t
 echo t3.json >> ~/projects/langflow/.git/info/exclude
 ```
 
-The langflow stack scripts derive the compose project name and host ports from the worktree directory name so several worktrees can run at once; because the URL is dynamic and `previewUrl` is a static string, "Stack up" prints the URLs instead of auto-opening a preview.
+The langflow stack scripts derive the compose project name and host ports from the worktree directory name so several worktrees can run at once. Ports are `p`/`p+1` for the T3 dev stack, `p+2`/`p+3` for the agent stack (`dev-servers`), and `p+10..p+13` for the IBM QA stack; because the URL is dynamic and `previewUrl` is a static string, "Stack up" prints the URLs instead of auto-opening a preview.
 
 Re-run the copy after editing the file here. T3 reads it from the main
 checkout only, so worktrees need no copy.
@@ -110,9 +110,14 @@ The IBM-Langflow overlay uses `shared/skills/langflow/t3.ibm-langflow.json`,
 copied to `~/projects/IBM-Langflow/t3.json` the same way (and excluded with
 `echo t3.json >> ~/projects/IBM-Langflow/.git/info/exclude`). Ports are
 per-worktree: base = 20000 + (cksum of the worktree directory name % 500) * 20,
-so each worktree owns a 20-port block; dev uses +0/+1 and the QA stack +10..+13.
-The directory name is stable even if the branch is renamed. Import the scripts
-once in the T3 project settings.
+so worktrees rarely collide (500 hash buckets); if `up` fails with port already
+allocated, another worktree hashed to the same block. Dev uses +0/+1 and the QA
+stack +10..+13. The directory name is stable even if the branch is renamed.
+Import the scripts once in the T3 project settings.
+
+The `apiKeyHelper` in `shared/settings.json` expects `$HOME/.config/cliproxy/token`
+to exist, so hosts without it should not link `settings.json` (use
+`install.sh --skills-only`, `--instructions-only` or `--agents-only`).
 
 ## Also here
 

@@ -27,5 +27,5 @@
     "ANTHROPIC_API_KEY": "",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   },
-  "apiKeyHelper": "cat /Users/viktoravelino/.config/cliproxy/token"
+  "apiKeyHelper": "cat \"$HOME/.config/cliproxy/token\""
 }
