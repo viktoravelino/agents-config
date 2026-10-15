@@ -40,6 +40,30 @@ If the current session authored or substantially discussed the diff, do not revi
 
 When in doubt, use `opus` — a missed blocker costs more than the model delta.
 
+### Second opinion inside a T3 Code thread
+
+Whenever you delegate to `Explore` and the session runs inside T3 Code (the `delegate_task` tool is present), also run a second reviewer on a different model family. A model reviewing its own family's output shares its blind spots; a different family breaks them. Skip it when the brief says "single-model" or the diff is trivial (the same threshold that selects `sonnet`).
+
+Launch the Copilot child in the same turn as the `Explore` agent, with the identical brief and the identical "return only the JSON array" instruction, plus an explicit line: "STRICTLY READ-ONLY: do not create or modify files, and run no state-changing git commands." Call `delegate_task` with `mode: "async"`, a `clientRequestId` unique per review round, and this target:
+
+```json
+{
+  "providerInstanceId": "acpRegistry_github_copilot",
+  "model": "gpt-6-luna",
+  "options": {
+    "reasoning_effort": "high",
+    "allow_all": "on",
+    "mode": "https://agentclientprotocol.com/protocol/session-modes#agent"
+  }
+}
+```
+
+`allow_all` must stay on or the unattended child blocks on approval prompts. Unlike `Explore`, the child has no tool-level read-only guarantee, so record `git status --short` in the reviewed checkout before launching. Record the returned `taskId`; the completion notification arrives on its own, so do not poll.
+
+- **Safety check.** When the child returns, run `git status --short` in the reviewed checkout. If anything changed that was clean before, report it to the user as a finding of its own before using the review, and do not revert it yourself.
+- **Merge.** Union the two arrays. Two findings are the same when they name the same file, lines within 3 of each other, and make the same claim: keep one entry and set `"sources": ["claude", "copilot"]`. Otherwise keep both, each with a single-element `sources`. Verification then runs once over the merged list exactly as above. A finding with two sources is verified like any other but is reported first in the written review.
+- **Failure.** If the child fails, times out, or returns anything that is not a JSON array, say so in the review header and proceed with the Claude findings alone. Never block the review on the second pass.
+
 ## Attack angles
 
 Derive concrete suspicions from the diff for each angle, then verify each one in code. Skip angles the diff cannot touch (no frontend changes → skip the frontend angle), and say so in `non_issues` only if the user asked about it.
@@ -101,7 +125,8 @@ Findings are ranked most severe first. Severity: `blocker` (wrong behavior, secu
       "claim": "<one sentence: what is wrong>",
       "failure_scenario": "<concrete input/state → wrong outcome>",
       "evidence": ["<file:line references traced to support the claim>"],
-      "suggested_fix": "<minimal fix, one or two sentences>"
+      "suggested_fix": "<minimal fix, one or two sentences>",
+      "sources": ["claude" | "copilot", ...]
     }
   ],
   "non_issues": [
@@ -109,6 +134,8 @@ Findings are ranked most severe first. Severity: `blocker` (wrong behavior, secu
   ]
 }
 ```
+
+`sources` is optional and present only when the second-opinion pass ran.
 
 ## Author handoff
 
