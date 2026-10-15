@@ -14,6 +14,8 @@ git ls-remote --heads origin 'release-*'
 
 Used by `request-review`.
 
+Also applies to the enterprise overlay `WatsonOrchestrate/IBM-Langflow` (github.ibm.com): same handles, same message; `frontend-overrides/` counts as `src/frontend/` (confirmed by Viktor, 2026-10-09).
+
 - **Teams**: `@langflow-fe` when the diff touches `src/frontend/`; `@langflow-be` when it touches `src/backend/` or `src/lfx/`; both, space-separated, when both. Ask when only tests, docs, or CI changed.
 - **Message**:
 

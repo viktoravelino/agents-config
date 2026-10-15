@@ -11,15 +11,14 @@
     },
     {
       "name": "Stack up (Docker)",
-      "command": "export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"$(git branch --show-current | tr \"/A-Z\" \"-a-z\")\" BACKEND_PORT=7861 FRONTEND_PORT=3001; c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; docker volume create langflow-agent-uv-cache >/dev/null; docker volume create langflow-agent-npm-cache >/dev/null; docker image inspect langflow-agent-base >/dev/null 2>&1 || c build; c up -d --wait --wait-timeout 900 && c logs -f",
-      "icon": "play",
-      "previewUrl": "http://localhost:3001",
-      "autoOpenPreview": true
+      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"langflow-$slug\" BACKEND_PORT=$p FRONTEND_PORT=$((p+1)); c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; docker volume create langflow-agent-uv-cache >/dev/null; docker volume create langflow-agent-npm-cache >/dev/null; docker image inspect langflow-agent-base >/dev/null 2>&1 || c build; echo \"==> backend http://localhost:$p  frontend http://localhost:$((p+1))\"; c up -d --wait --wait-timeout 900 && c logs -f",
+      "icon": "play"
     },
     {
       "name": "Stack down (Docker)",
-      "command": "export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"$(git branch --show-current | tr \"/A-Z\" \"-a-z\")\" BACKEND_PORT=7861 FRONTEND_PORT=3001; c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; c down -v",
-      "icon": "configure"
+      "command": "p=$((20000 + $(basename \"$PWD\" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename \"$PWD\" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\\n' '-'); export WORKTREE=\"$PWD\" COMPOSE_PROJECT_NAME=\"langflow-$slug\" BACKEND_PORT=$p FRONTEND_PORT=$((p+1)); c() { docker compose -f \"$HOME/.claude/skills/langflow/docker/compose.yml\" \"$@\"; }; c down -v",
+      "icon": "configure",
+      "runOnSettle": true
     }
   ]
 }

@@ -4,7 +4,7 @@ Applies the generic rules in `dev-servers` to Langflow. Two modes: **Docker mode
 
 ## Ports
 
-Backend `7861` (then `7862`, …), frontend `3001` (then `3002`, …). The user's own stack runs on `7860` and `3000`. In Docker mode these are the *host-side* mappings; inside the containers the ports are always the defaults.
+Host mode: backend `7861` (then `7862`, …), frontend `3001` (then `3002`, …). The user's own stack runs on `7860` and `3000`. Docker mode derives both from the worktree directory name (see "Start"), so concurrent worktrees do not collide; these are the *host-side* mappings, and inside the containers the ports are always the defaults.
 
 ## Credential check
 
@@ -25,12 +25,12 @@ Measured on this machine (OrbStack, arm64): base image build 22 s; first start o
 
 ### Start
 
-From the worktree root. The project name is the worktree's basename lower-cased, so every worktree gets its own volumes and containers.
+From the worktree root. The project name is `langflow-<slug>`, where the slug is the worktree basename lower-cased (not the branch, which can be renamed while the stack runs). Ports are `20000 + cksum(basename) % 500 * 20` for the backend and one more for the frontend, so every worktree gets its own volumes, containers and ports.
 
 ```sh
 COMPOSE="docker compose -f $HOME/.claude/skills/langflow/docker/compose.yml"
-export WORKTREE="$PWD" COMPOSE_PROJECT_NAME="$(basename "$PWD" | tr 'A-Z' 'a-z')"
-export BACKEND_PORT=7861 FRONTEND_PORT=3001
+p=$((20000 + $(basename "$PWD" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\n' '-')
+export WORKTREE="$PWD" COMPOSE_PROJECT_NAME="langflow-$slug" BACKEND_PORT=$p FRONTEND_PORT=$((p+1))
 
 docker volume create langflow-agent-uv-cache >/dev/null
 docker volume create langflow-agent-npm-cache >/dev/null
@@ -63,7 +63,7 @@ $COMPOSE down -v      # containers + this project's venv/node_modules/data volum
 $COMPOSE down         # containers only; next `up` is ~17 s
 ```
 
-The shared cache volumes (`langflow-agent-uv-cache`, `langflow-agent-npm-cache`) and the `langflow-agent-base` image are external and survive `down -v`; keep them. Run `down -v` for a worktree's project **before** removing the worktree, or its ~2.5 GB of `<project>_venv`, `<project>_node_modules`, and `<project>_data` volumes stay behind with nothing left to own them. A stack started from the main checkout is project `langflow`, so its leftovers are `langflow_venv` and friends. To find and remove leftovers from any project:
+The shared cache volumes (`langflow-agent-uv-cache`, `langflow-agent-npm-cache`) and the `langflow-agent-base` image are external and survive `down -v`; keep them. Run `down -v` for a worktree's project **before** removing the worktree, or its ~2.5 GB of `<project>_venv`, `<project>_node_modules`, and `<project>_data` volumes stay behind with nothing left to own them. The T3 "Stack down (Docker)" script does this (and runs on thread settle), using the same directory-derived project name. A stack started by hand from the main checkout is project `langflow-<checkout dir>`; older ones were named `langflow`, so their leftovers are `langflow_venv` and friends. To find and remove leftovers from any project:
 
 ```sh
 docker volume ls -q --filter dangling=true | grep -v -- '-agent-'   # review the list
@@ -129,7 +129,7 @@ Stop the listeners on `7861` and `3001` (or whichever you took). Remove `/tmp/<w
 
 ## Playwright
 
-Both modes: the probe config from `dev-servers` with `baseURL: "http://localhost:3001/"` (the host-side frontend port), run on the host from `src/frontend` so `@playwright/test` and the repo's test utils (`tests/utils/...`) resolve. Browsers stay on the host; the Docker image deliberately has none.
+Both modes: the probe config from `dev-servers` with `baseURL: "http://localhost:<FRONTEND_PORT>/"` (the host-side frontend port; `3001` in host mode), run on the host from `src/frontend` so `@playwright/test` and the repo's test utils (`tests/utils/...`) resolve. Browsers stay on the host; the Docker image deliberately has none.
 
 ```sh
 npx playwright test --config ../../.evidence/probes/ui-probe.config.ts

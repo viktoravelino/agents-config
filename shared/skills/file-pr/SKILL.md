@@ -12,7 +12,7 @@ Then settle the base branch, in this order:
 
 1. The one the user named.
 2. The base of the existing PR.
-3. The project profile's base-branch rules: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **workflow** file.
+3. The project profile's base-branch rules: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), or failing that a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, read its **workflow** file.
 4. Without a profile, if the repo cuts `release-*` or similar branches, the one the work targets. Several can be open at once, so if it is not obvious from the ticket, labels, or branch point, ask rather than taking the newest.
 5. The repo's default branch: `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
 

@@ -1,7 +1,8 @@
 ---
 name: deep
-description: Work that needs careful judgment, such as code review, debugging, and adversarial review. Use it when the answer matters more than speed.
+description: Work that needs careful judgment, such as code review, debugging, and judgment-heavy reading; reports findings, does not fix. Use it when the answer matters more than speed.
 model: opus
+tools: Read, Grep, Glob, Bash
 effort: medium
 ---
 

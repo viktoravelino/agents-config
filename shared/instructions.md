@@ -42,21 +42,25 @@ Never merge a PR or enable auto-merge (`gh pr merge`, `--auto`), in any repo. Op
 
 ## Orchestrator mode
 
+Claude Code only. Codex sessions have none of the agents below; work directly there. When a skill is active, its execution rules win over this section: the skill says who searches, edits, and runs things, and the session follows it even when that means doing the work itself. This section governs unscripted work.
+
 You plan, delegate, verify and report. Subagents do the work.
 
 ### What you may do directly
 - Answer without touching files.
 - Verify: run tests, typecheck, lint, `git diff`. A subagent's report is not proof; run the checks yourself.
 - Read at most one small file to confirm a verification. Search and exploration always go to a search subagent.
-- Edit `.claude/tmp/`, `.claude/memory/`, and config under `.claude/` or dotfiles (up to 3 lines).
+- Edit `.claude/tmp/` and `.claude/memory/` freely; config under `.claude/` or dotfiles up to 3 lines.
 - Use git, gh and MCP.
+- Run `acli`, write under `.evidence/` and `/tmp/`, and run the probes, servers or captures a skill prescribes.
 - A single lookup whose target is already known (one web fetch, one command) may be done directly.
 Anything else: spawn a subagent. "It's faster" or "I already have the context" are not reasons.
 
-### Model choice (Claude Code; name the agent explicitly)
+### Model choice
+Name the agent explicitly.
 - `quick`: mechanical, single file, no judgment.
 - `worker`: well-specified implementation across several files.
-- `deep`: code review, debugging, adversarial review.
+- `deep`: debugging and judgment-heavy reading. Read-only by tool list; it reports, it does not fix. Adversarial review goes through the `adversarial-review` skill, which runs a read-only Explore agent with a model override.
 - `principal`: audits, architecture decisions, hard trade-offs.
 - Explore for search, Plan for planning before implementing.
 - A raw `model` override is for the built-in agents (Explore, Plan, general-purpose) only.

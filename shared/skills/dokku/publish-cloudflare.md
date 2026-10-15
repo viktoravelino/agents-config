@@ -2,7 +2,7 @@
 
 Run after `ssh dokku domains:add <app> <name>.vkav.dev` and after the maintainer has confirmed the new public hostname. Zone `vkav.dev`, tunnel `homelab` (remotely managed). The Cloudflare account, zone and tunnel ids live in the private homelab repo (`config/cloudflare/account.json` and `tunnel.json`) and are read from there below; do not copy them into this skill. The login also sees a second account, so never pick the account from `GET /accounts`.
 
-Auth is the global API key in `~/.config/cloudlflare/global-api-key` (the directory name is spelled that way) with the header pair `X-Auth-Email` and `X-Auth-Key`. The email is the Cloudflare login of the maintainer and is not recorded in the homelab repo: ask for it once and put it in `CF_EMAIL`. The key is read inside the `cf` function and never printed; do not `echo` it, `set -x`, or paste curl output that includes request headers.
+Auth is the global API key in `~/.config/cloudflare/global-api-key` with the header pair `X-Auth-Email` and `X-Auth-Key`. The email is the Cloudflare login of the maintainer and is not recorded in the homelab repo: ask for it once and put it in `CF_EMAIL`. The key is read inside the `cf` function and never printed; do not `echo` it, `set -x`, or paste curl output that includes request headers.
 
 ```bash
 CF_EMAIL=<cloudflare-login-email>
@@ -11,7 +11,7 @@ B=https://api.cloudflare.com/client/v4
 H=~/projects/homelab/config/cloudflare
 ACCT=$(jq -r .account_id $H/account.json)
 TUNNEL=$(jq -r .id $H/tunnel.json)
-cf() { curl -sS -H "X-Auth-Email: $CF_EMAIL" -H "X-Auth-Key: $(cat ~/.config/cloudlflare/global-api-key)" -H "Content-Type: application/json" "$@"; }
+cf() { curl -sS -H "X-Auth-Email: $CF_EMAIL" -H "X-Auth-Key: $(cat ~/.config/cloudflare/global-api-key)" -H "Content-Type: application/json" "$@"; }
 ZONE=$(jq -r .zone_id $H/account.json)
 
 # 1. Tunnel ingress: insert the hostname before the http_status:404 catch-all, change nothing else.

@@ -25,13 +25,13 @@ Also collect (ask only if genuinely unavailable):
 
 - **Intent**: what the diff claims to do — from the user, PR description, commit messages, or linked ticket. The review attacks the gap between claim and code.
 - **Constraints**: paths, services, or ports the reviewer must not touch. The review is always read-only: no edits, no commits, no formatters, no dev servers. Running read-only checks (`ruff check`, `tsc --noEmit`, linters) is allowed.
-- **Project profile**: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **review** file and pass it to the reviewer agent along with the angles. It adds project-specific targets and check commands; it does not replace the angles.
+- **Project profile**: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), or failing that a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, read its **review** file and pass it to the reviewer agent along with the angles. It adds project-specific targets and check commands; it does not replace the angles.
 
 ## Fresh eyes rule
 
 If the current session authored or substantially discussed the diff, do not review it inline — the whole point is not sharing the author's blind spots. Delegate to a read-only `Explore` agent (thoroughness: very thorough) with: the repo path and branch, the scope command, the intent summary, the constraints, the attack angles below, and the output schema below. If the session is cold (invoked purely to review someone else's diff), review inline.
 
-**The reviewer agent does not write the file.** `Explore` has no `Write` or `Edit` tool at all, so instructing it to save the review makes it fail or improvise a shell heredoc. Instruct it to return the JSON as its final message and nothing else; this session persists it per **Output** below. Fresh eyes is about who *analyzes* the diff — the parent only writes back a payload it never reasoned about, so nothing leaks the author's mental model into the review.
+**The reviewer agent does not write the file.** `Explore` has no `Write` or `Edit` tool at all, so instructing it to save the review makes it fail or improvise a shell heredoc. Instruct it to return the JSON as its final message and nothing else; this session persists it per **Output** below. Fresh eyes is about who *analyzes* the diff — the parent only writes back a payload it never reasoned about, so nothing leaks the author's mental model into the review. The global instructions route adversarial review here, so this choice is the documented one.
 
 **Model selection.** Pick the agent's model by review complexity, and state the choice to the user:
 

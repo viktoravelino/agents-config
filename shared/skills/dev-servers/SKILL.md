@@ -18,7 +18,7 @@ The user usually has their own stack running while you work. Everything here exi
 
 ## 0. Project profile
 
-Resolve the repo's profile: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **servers** file. It supplies the ports, start commands, credential checks, and hazards for this project and overrides the defaults below. Without a profile, work them out in step 4.
+Resolve the repo's profile: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), or failing that a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, read its **servers** file. It supplies the ports, start commands, credential checks, and hazards for this project and overrides the defaults below. Without a profile, work them out in step 4.
 
 ## 1. Check what is running
 

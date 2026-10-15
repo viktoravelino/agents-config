@@ -45,7 +45,9 @@ so they stay out of the `/` menu.
 A workflow skill resolves the repository's profile from its origin —
 `basename -s .git "$(git remote get-url origin)"` — and reads the sibling skill
 of that name if it exists, so `langflow-ai/langflow` and every worktree of it
-use `shared/skills/langflow/`. To add a project, create a folder named after
+use `shared/skills/langflow/`. If no skill has that name, it falls back to a
+profile whose `metadata.repos` lists the origin's `owner/repo` (this is how
+`WatsonOrchestrate/IBM-Langflow` finds the langflow profile). To add a project, create a folder named after
 the repository:
 
 ```
@@ -99,8 +101,18 @@ cp ~/projects/agents-config/shared/skills/langflow/t3.json ~/projects/langflow/t
 echo t3.json >> ~/projects/langflow/.git/info/exclude
 ```
 
+The langflow stack scripts derive the compose project name and host ports from the worktree directory name so several worktrees can run at once; because the URL is dynamic and `previewUrl` is a static string, "Stack up" prints the URLs instead of auto-opening a preview.
+
 Re-run the copy after editing the file here. T3 reads it from the main
 checkout only, so worktrees need no copy.
+
+The IBM-Langflow overlay uses `shared/skills/langflow/t3.ibm-langflow.json`,
+copied to `~/projects/IBM-Langflow/t3.json` the same way (and excluded with
+`echo t3.json >> ~/projects/IBM-Langflow/.git/info/exclude`). Ports are
+per-worktree: base = 20000 + (cksum of the worktree directory name % 500) * 20,
+so each worktree owns a 20-port block; dev uses +0/+1 and the QA stack +10..+13.
+The directory name is stable even if the branch is renamed. Import the scripts
+once in the T3 project settings.
 
 ## Also here
 

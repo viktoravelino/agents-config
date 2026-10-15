@@ -10,7 +10,7 @@ Output a ready-to-send message for the project's review channel. **You do not po
 
 ## Project profile
 
-Resolve the repo's profile: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **workflow** file. Its "Review channel" section defines the team handles, how to pick them, and the message shape; its "Jira" section gives the browse URL and key pattern.
+Resolve the repo's profile: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), or failing that a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, read its **workflow** file. Its "Review channel" section defines the team handles, how to pick them, and the message shape; its "Jira" section gives the browse URL and key pattern.
 
 If there is no profile, or it has no review channel, say that no review channel is set up for this repo and stop — do not borrow another project's handles.
 

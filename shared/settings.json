@@ -21,5 +21,11 @@
   "model": "claude-fable-5-1",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
-  "theme": "dark"
+  "theme": "dark",
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://cliproxy.vkav.dev",
+    "ANTHROPIC_API_KEY": "",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "apiKeyHelper": "cat /Users/viktoravelino/.config/cliproxy/token"
 }
