@@ -2,7 +2,7 @@
 # by agents-config/install.sh; ~/.ssh/config must start with `Include ~/.ssh/config.d/*`.
 # Key: ~/.ssh/lab, one per machine, authorized on every guest and registered in Dokku.
 # On the Macs, lab-tunnel (linked beside this file) adds the Cloudflare tunnel fallback.
-# Lab documentation: homelab repo, README.md (Access) and config/workbench/README.md.
+# Lab documentation: homelab repo, README.md (Access) and config/jump/README.md.
 
 Host pve
   HostName 192.168.2.10
@@ -36,6 +36,16 @@ Host cliproxy
   HostName 192.168.2.18
   User root
 
-Host pve cloudflared workbench media infra dokku dokku-admin cliproxy
+Host jump
+  HostName 192.168.2.22
+  User jump
+  HostKeyAlias jump
+
+Host jump-admin
+  HostName 192.168.2.22
+  User root
+  HostKeyAlias jump
+
+Host pve cloudflared workbench media infra dokku dokku-admin cliproxy jump jump-admin
   IdentityFile ~/.ssh/lab
   IdentitiesOnly yes
