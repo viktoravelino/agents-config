@@ -31,7 +31,7 @@ Commands that need root, such as `ssh-keys:add`, are refused through the `dokku`
 ssh -i ~/.ssh/lab ubuntu@192.168.2.13 'sudo dokku ssh-keys:add <name> /path/to/key.pub'
 ```
 
-The key on this Mac is `~/.ssh/lab` (the MacBook Air and the workbench VM name it `~/.ssh/homelab`). Prefer the `dokku` alias, defined in `~/.ssh/config.d/lab`, over spelling out the key.
+The key is `~/.ssh/lab` on every machine (since 2026-10-20; the host entries come from this repo's `ssh/lab`). Prefer the `dokku` alias, defined in `~/.ssh/config.d/lab`, over spelling out the key.
 
 URLs: on the LAN an app answers only to its public hostname, so send that as the `Host` header to `192.168.2.13:80` (`curl -H 'Host: <name>.vkav.dev' http://192.168.2.13/`); the old `<app>.192.168.2.13.sslip.io` names are retired. Public `https://<name>.vkav.dev` via a Cloudflare Tunnel (TLS ends at Cloudflare, Dokku serves plain HTTP, there is no certificate plugin).
 
