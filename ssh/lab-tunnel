@@ -1,0 +1,23 @@
+# Macs only (install.sh links it when uname is Darwin): the lab from anywhere. The plain
+# names in `lab` connect direct when the workbench answers on its LAN address (at home, or
+# over Tailscale) and otherwise through the Cloudflare tunnel, workbench-ssh.vkav.dev, behind
+# Cloudflare Access with this Mac's service token (~/.config/cloudflare-access/workbench-ssh.env,
+# written by homelab's scripts/workstation/render-secrets.sh); the other guests then jump
+# through the workbench. The probe is a 1 s TCP connect; `-G` is the macOS connect timeout.
+# `originalhost` matches the name typed on the command line, so this file works whatever the
+# include order. Documented in the homelab repo: docs/workbench-ssh-tunnel.md.
+
+Match originalhost workbench !exec "nc -z -G 1 192.168.2.15 22"
+  ProxyCommand sh -c '. ~/.config/cloudflare-access/workbench-ssh.env 2>/dev/null; exec /opt/homebrew/bin/cloudflared access ssh --hostname workbench-ssh.vkav.dev'
+
+Match originalhost "pve,cloudflared,media,infra,dokku,dokku-admin,cliproxy" !exec "nc -z -G 1 192.168.2.15 22"
+  ProxyJump workbench
+
+# The MacBook Air, one jump away: the workbench dials it over Tailscale, so this Mac needs no
+# Tailscale. The Air must be awake. Meant for the MacBook Pro; harmless on the Air itself.
+Host air
+  HostName viktors-macbook-air.orca-pollux.ts.net
+  User viktoravelino
+  IdentityFile ~/.ssh/lab
+  IdentitiesOnly yes
+  ProxyJump workbench
