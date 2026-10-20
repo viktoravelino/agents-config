@@ -8,7 +8,6 @@ shared/instructions.md     -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md
 shared/skills/<name>/      -> ~/.agents/skills/<name>, ~/.claude/skills/<name>
 shared/settings.json       -> ~/.claude/settings.json  (Claude only)
 shared/agents/<name>.md    -> ~/.claude/agents/<name>.md  (Claude only)
-shared/skill-sources.json     where the skills copied from other repos came from
 ```
 
 ## Install
@@ -64,29 +63,9 @@ in gitignored files, as `acli-jira/boards.md` does.
 
 ## Skills from other repositories
 
-Some skills are copies of a directory in another repository. No skill is
-currently synced from upstream. `shared/skill-sources.json`
-records the repo, path, ref, and the upstream commit each copy was taken from.
-
-```bash
-./sync-skills.sh check                 # anything behind upstream or edited locally?
-./sync-skills.sh update <name>         # pull upstream in and bump the pin
-./sync-skills.sh add <repo> <path>     # copy a skill in; asks whether to track its source
-./sync-skills.sh remove <name>         # stop tracking; asks whether to keep or delete the files
-```
-
-`check` lists the upstream commits that touched the skill since the pin and
-exits non-zero when something is behind, edited locally, or broken. `update`
-leaves the change unstaged; review it with `git diff` and commit the skill and
-the manifest together. A local edit blocks `update` until you either move it
-upstream or pass `--force`. Upstreams are cached as small bare clones under
-`~/.cache/agents-config/skills`; the cache is disposable.
-
-`add` asks whether to record the source (`--track` / `--no-track` skip the
-prompt); a copy that is not tracked is just a skill authored here. `remove`
-drops the manifest entry and asks whether the directory stays (it
-becomes a skill authored here) or goes; `--keep` / `--delete` answer that
-non-interactively. Skills without a manifest entry are authored here.
+None at the moment. A skill copied from another repository gets a line at the
+top of its `SKILL.md` naming the source repo, path and commit; there is no
+sync tooling (the former `sync-skills.sh` tracked nothing and was removed).
 
 ## T3 Code project files
 
@@ -122,4 +101,3 @@ to exist, so hosts without it should not link `settings.json` (use
 ## Also here
 
 - `claude-heartbeat/` — timer that keeps Claude usage blocks chained (see its README).
-- `legacy/` — retired skills and the old instructions, kept for reference.
