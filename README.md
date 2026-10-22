@@ -8,8 +8,6 @@ shared/instructions.md     -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md
 shared/skills/<name>/      -> ~/.agents/skills/<name>, ~/.claude/skills/<name>
 shared/settings.json       -> ~/.claude/settings.json  (Claude only)
 shared/agents/<name>.md    -> ~/.claude/agents/<name>.md  (Claude only)
-ssh/lab                    -> ~/.ssh/config.d/lab
-ssh/lab-tunnel             -> ~/.ssh/config.d/lab-tunnel  (macOS only)
 ```
 
 ## Install
@@ -68,16 +66,6 @@ in gitignored files, as `acli-jira/boards.md` does.
 None at the moment. A skill copied from another repository gets a line at the
 top of its `SKILL.md` naming the source repo, path and commit; there is no
 sync tooling (the former `sync-skills.sh` tracked nothing and was removed).
-
-## SSH config for the lab
-
-`ssh/lab` holds the host entries for the homelab guests (`ssh infra`, `ssh dokku`, ...)
-with `~/.ssh/lab` as the key, one key per machine with the same name everywhere.
-`ssh/lab-tunnel` adds the Cloudflare tunnel fallback and `ssh air`, and is linked on
-Macs only. `~/.ssh/config` must start with `Include ~/.ssh/config.d/*`; the installer
-warns when it does not. A real file in the way is moved to `~/.ssh/backup/`, never
-left in `config.d/` where the include would still read it. Lab side (addresses, keys,
-the tunnel): the homelab repo.
 
 ## T3 Code project files
 

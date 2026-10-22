@@ -16,11 +16,6 @@ CLAUDE_SETTINGS_TARGET="$HOME/.claude/settings.json"
 CODEX_SKILLS_DIR="$HOME/.agents/skills"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CLAUDE_AGENTS_DIR="$HOME/.claude/agents"
-# SSH client config for the lab guests: `lab` everywhere, `lab-tunnel` on macOS only.
-# Backups go to ~/.ssh/backup/, never beside the link: `Include ~/.ssh/config.d/*` would read them.
-SHARED_SSH_DIR="$SCRIPT_DIR/ssh"
-SSH_CONFIG_DIR="$HOME/.ssh/config.d"
-SSH_BACKUP_DIR="$HOME/.ssh/backup"
 BACKUP_SUFFIX=".pre-agents-config-bak"
 
 DRY_RUN=0
@@ -28,7 +23,6 @@ DO_INSTRUCTIONS=1
 DO_SKILLS=1
 DO_SETTINGS=1
 DO_AGENTS=1
-DO_SSH=1
 
 for arg in "$@"; do
   case "$arg" in
@@ -39,31 +33,21 @@ for arg in "$@"; do
       DO_INSTRUCTIONS=0
       DO_SETTINGS=0
       DO_AGENTS=0
-      DO_SSH=0
       ;;
     --instructions-only)
       DO_SKILLS=0
       DO_SETTINGS=0
       DO_AGENTS=0
-      DO_SSH=0
       ;;
     --settings-only)
       DO_INSTRUCTIONS=0
       DO_SKILLS=0
       DO_AGENTS=0
-      DO_SSH=0
       ;;
     --agents-only)
       DO_INSTRUCTIONS=0
       DO_SKILLS=0
       DO_SETTINGS=0
-      DO_SSH=0
-      ;;
-    --ssh-only)
-      DO_INSTRUCTIONS=0
-      DO_SKILLS=0
-      DO_SETTINGS=0
-      DO_AGENTS=0
       ;;
     -h|--help)
       echo "Usage: ${BASH_SOURCE[0]##*/} [options]"
@@ -73,7 +57,6 @@ for arg in "$@"; do
       echo "  shared/skills/*        -> ~/.agents/skills/, ~/.claude/skills/"
       echo "  shared/settings.json   -> ~/.claude/settings.json"
       echo "  shared/agents/*.md     -> ~/.claude/agents/"
-      echo "  ssh/lab, ssh/lab-tunnel -> ~/.ssh/config.d/ (lab-tunnel on macOS only)"
       echo
       echo "Skills and agents are synced, not just added: links pointing at one that no"
       echo "longer exists are removed. Anything not managed by this script is"
@@ -84,7 +67,6 @@ for arg in "$@"; do
       echo "      --instructions-only skip skills, agents and settings"
       echo "      --settings-only     only the Claude settings file"
       echo "      --agents-only       only the Claude agent definitions"
-      echo "      --ssh-only          only the SSH config files"
       echo "  -h, --help              show this help"
       echo
       echo "Set NO_COLOR=1 to disable colored output."
@@ -170,10 +152,6 @@ compute_name_width() {
       [ -e "$entry" ] || continue
       track_name_width "$(basename "$entry")"
     done
-  fi
-
-  if [ "$DO_SSH" -eq 1 ]; then
-    track_name_width "lab-tunnel"
   fi
 
   if [ "$DO_SKILLS" -eq 1 ]; then
@@ -334,65 +312,6 @@ sync_agents_target() {
   done
 }
 
-# Links one file from ssh/ into ~/.ssh/config.d/. A real file in the way is moved to
-# ~/.ssh/backup/ with a timestamp (a backup left in config.d/ would still be included).
-link_ssh_file() {
-  local name="$1"
-  local source="$SHARED_SSH_DIR/$name" target="$SSH_CONFIG_DIR/$name"
-
-  if [ -L "$target" ] && [ "$(readlink "$target")" = "$source" ]; then
-    unchanged_count=$((unchanged_count + 1))
-    status_line "$DIM" "=" "$name" "up to date"
-    return 0
-  fi
-
-  if [ -e "$target" ] || [ -L "$target" ]; then
-    local backup="$SSH_BACKUP_DIR/$name.$(date +%Y%m%d-%H%M%S)"
-    if [ "$DRY_RUN" -eq 0 ]; then
-      mkdir -p "$SSH_BACKUP_DIR"
-      chmod 700 "$SSH_BACKUP_DIR"
-      mv "$target" "$backup"
-    fi
-    backed_up_count=$((backed_up_count + 1))
-    status_line "$YELLOW" "!" "$name" "$ACT_BACKUP -> $(pretty_path "$backup")"
-  fi
-
-  if [ "$DRY_RUN" -eq 0 ]; then
-    mkdir -p "$SSH_CONFIG_DIR"
-    chmod 700 "$SSH_CONFIG_DIR"
-    ln -s "$source" "$target"
-  fi
-  linked_count=$((linked_count + 1))
-  status_line "$GREEN" "+" "$name" "$ACT_LINK"
-}
-
-# Removes our lab-tunnel link on machines that are not Macs.
-unlink_ssh_file() {
-  local name="$1"
-  local source="$SHARED_SSH_DIR/$name" target="$SSH_CONFIG_DIR/$name"
-
-  if [ -L "$target" ] && [ "$(readlink "$target")" = "$source" ]; then
-    [ "$DRY_RUN" -eq 1 ] || rm "$target"
-    removed_count=$((removed_count + 1))
-    status_line "$RED" "-" "$name" "$ACT_REMOVE, macOS only"
-  fi
-}
-
-sync_ssh_target() {
-  section "SSH config" "$(pretty_path "$SSH_CONFIG_DIR")"
-
-  link_ssh_file lab
-  if [ "$(uname)" = Darwin ]; then
-    link_ssh_file lab-tunnel
-  else
-    unlink_ssh_file lab-tunnel
-  fi
-
-  if ! grep -qs '^Include ~/.ssh/config.d/\*' "$HOME/.ssh/config"; then
-    status_line "$YELLOW" "!" "~/.ssh/config" "add 'Include ~/.ssh/config.d/*' as its first line"
-  fi
-}
-
 if [ "$DO_INSTRUCTIONS" -eq 1 ] && [ ! -f "$INSTRUCTIONS_SOURCE" ]; then
   printf '%sMissing instructions file: %s%s\n' \
     "$RED" "$(pretty_path "$INSTRUCTIONS_SOURCE")" "$RESET" >&2
@@ -402,11 +321,6 @@ fi
 if [ "$DO_SETTINGS" -eq 1 ] && [ ! -f "$SETTINGS_SOURCE" ]; then
   printf '%sMissing settings file: %s%s\n' \
     "$RED" "$(pretty_path "$SETTINGS_SOURCE")" "$RESET" >&2
-  exit 1
-fi
-
-if [ "$DO_SSH" -eq 1 ] && [ ! -f "$SHARED_SSH_DIR/lab" ]; then
-  printf '%sMissing SSH config: %s%s\n' "$RED" "$(pretty_path "$SHARED_SSH_DIR/lab")" "$RESET" >&2
   exit 1
 fi
 
@@ -468,10 +382,6 @@ fi
 
 if [ "$DO_AGENTS" -eq 1 ]; then
   sync_agents_target "$CLAUDE_AGENTS_DIR" "Claude agents"
-fi
-
-if [ "$DO_SSH" -eq 1 ]; then
-  sync_ssh_target
 fi
 
 printf '\n%s%s%s %s%d linked · %d removed · %d unchanged' \
