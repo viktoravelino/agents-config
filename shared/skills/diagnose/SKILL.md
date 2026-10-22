@@ -2,6 +2,8 @@
 name: diagnose
 description: Structured debugging for a problem that has no ticket yet -- reproduce it, isolate it, find the root cause at file:line, fix it with a test that would have caught it, and prove the fix. Use when the user pastes an error or stack trace, says something broke or "works here but not there", or behavior diverges from what they expect and the cause is not obvious.
 argument-hint: "<error, symptom, or failing command>"
+metadata:
+  requires: [evidence, dev-servers]
 ---
 
 # Diagnose

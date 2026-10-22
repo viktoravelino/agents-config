@@ -1,0 +1,9 @@
+{
+  "targets": ["claude"],
+  "items": {
+    "instructions": "all",
+    "skills": "all",
+    "agents": "all",
+    "settings": "all"
+  }
+}

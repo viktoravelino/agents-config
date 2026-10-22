@@ -1,29 +1,60 @@
 # agents-config
 
-Shared instructions and skills for Codex and Claude Code, linked into place
+Shared instructions, skills and agents for Claude Code and Codex, installed
 from this repository so edits here take effect immediately.
 
 ```
-shared/instructions.md     -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md
-shared/skills/<name>/      -> ~/.agents/skills/<name>, ~/.claude/skills/<name>
+shared/instructions.md     -> ~/.claude/CLAUDE.md, ~/.codex/AGENTS.md
+shared/skills/<name>/      -> ~/.claude/skills/<name>, ~/.agents/skills/<name>
+shared/agents/<name>.md    -> ~/.claude/agents/<name>.md, and a generated ~/.codex/agents/<name>.toml
 shared/settings.json       -> ~/.claude/settings.json  (Claude only)
-shared/agents/<name>.md    -> ~/.claude/agents/<name>.md  (Claude only)
 shared/plugins/mcp/        Claude plugin holding user-wide MCP servers (see below)
 ```
 
 ## Install
 
+Needs [Bun](https://bun.sh). The first run installs dependencies.
+
 ```bash
-./install.sh          # link everything; -n to preview
-                      # --skills-only / --instructions-only / --settings-only / --agents-only
+./install                    # interactive on first run; later runs reuse the saved selection
+./install --edit             # change the selection
+./install --dry-run          # print the plan, change nothing
+./install --profile headless --yes    # no prompts (required form when not in a terminal)
 ```
 
-`settings.json` is Claude-only — Codex has no equivalent. Machine-local
+Flags: `--edit`, `--yes` (skip the confirmation), `--profile <name>`,
+`--dry-run`, `-h/--help`.
+
+The plan lists `+` create, `~` update, `-` remove and `!` conflict per tool;
+unchanged links are only counted. Links are synced: a skill removed here is
+unlinked there. Anything the installer does not own is left alone, and real
+files in the way are backed up as `<name>.pre-agents-config-bak` first.
+
+Codex agents are generated from the Claude agent files: `name`, `description`
+and the body carry over, `effort` becomes `model_reasoning_effort` (`max` is
+`xhigh`), and `tools` and `model` are dropped. A generated file you edited is
+kept unless you choose to overwrite it. An agent named `default`, `worker` or
+`explorer` overrides the Codex built-in of that name. `~/.codex/config.toml`
+is never touched.
+
+Skills can declare dependencies with `metadata.requires: [other-skill]` in
+their frontmatter; selecting a skill selects what it requires.
+
+`settings.json` is Claude-only, as Codex has no equivalent. Machine-local
 approvals stay out of it: Claude Code writes those to `settings.local.json`,
 which this repo does not manage.
 
-Links are synced: a skill removed here is unlinked there. Anything the script
-does not own is left alone, and real files in the way are backed up first.
+### State and profiles
+
+The selection and the list of artifacts the installer owns live in
+`~/.config/agents-config/state.json` (`$XDG_CONFIG_HOME` is respected). On the
+first run, existing links that point into this repo are adopted. Later runs
+only ask about items that are new in the repo; without a terminal they are
+skipped with a notice.
+
+A profile in `profiles/<name>.json` is a partial selection (tools plus item
+names per kind, or `"all"`). `work-mac` is Claude and Codex with everything;
+`headless` is Claude only.
 
 ## MCP servers
 
@@ -89,7 +120,7 @@ A profile can also carry a `t3.json` for [T3 Code](https://t3.codes). T3 reads
 the file through its workspace file service, which resolves symlinks and
 refuses anything outside the checkout, so it has to be a real copy. It is
 copied by hand into the main checkout and kept out of the repo's index via
-`.git/info/exclude` (`install.sh` does not manage it):
+`.git/info/exclude` (the installer does not manage it):
 
 ```bash
 cp ~/projects/agents-config/shared/skills/langflow/t3.json ~/projects/langflow/t3.json

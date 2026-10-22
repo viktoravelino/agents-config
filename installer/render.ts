@@ -1,0 +1,86 @@
+import { styleText } from "node:util";
+import type { Catalog } from "./catalog.ts";
+import { displayPath, type Action, type Plan } from "./plan.ts";
+
+const color = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+const paint = (format: Parameters<typeof styleText>[0], text: string) => (color ? styleText(format, text) : text);
+
+/** Maps each skill's source dir to the skill that pulled it in, for "(via x)" notes. */
+export function viaBySource(catalog: Catalog, via: Map<string, string>): Map<string, string> {
+  return new Map(
+    catalog.flatMap((item) => {
+      const parent = item.kind === "skills" ? via.get(item.name) : undefined;
+      return parent ? [[item.source, parent] as const] : [];
+    }),
+  );
+}
+
+function line(action: Action, home: string, via: Map<string, string>): string {
+  switch (action.type) {
+    case "create":
+    case "update": {
+      const { desired } = action;
+      const notes = [
+        desired.note,
+        via.has(desired.source) ? `via ${via.get(desired.source)}` : undefined,
+      ].filter(Boolean);
+      const glyph = action.type === "create" ? paint("green", "+") : paint("yellow", "~");
+      return `${glyph} ${displayPath(desired.path, home)}${notes.length ? paint("dim", `  (${notes.join("; ")})`) : ""}`;
+    }
+    case "remove":
+      return `${paint("red", "-")} ${displayPath(action.owned.path, home)}${paint("dim", `  (${action.reason})`)}`;
+    case "conflict": {
+      const what =
+        action.cause === "in-the-way"
+          ? "real file in the way, will be backed up"
+          : `edited since last install, ${action.resolution === "keep" ? "kept" : "will be overwritten, old copy backed up"}`;
+      return `${paint("yellow", "!")} ${displayPath(action.path, home)}${paint("dim", `  (${what})`)}`;
+    }
+  }
+}
+
+function targetOf(action: Action): string {
+  switch (action.type) {
+    case "create":
+    case "update":
+      return action.desired.target;
+    case "remove":
+      return action.owned.target;
+    case "conflict":
+      return action.target;
+  }
+}
+
+/** Prints the plan grouped by target; unchanged artifacts are only counted. */
+export function renderPlan(
+  plan: Plan,
+  labels: Map<string, string>,
+  home: string,
+  via: Map<string, string>,
+): void {
+  const ids = new Set([...plan.actions.map(targetOf), ...plan.unchanged.map((d) => d.target)]);
+  for (const id of ids) {
+    console.log(`\n${paint("bold", labels.get(id) ?? id)}`);
+    for (const action of plan.actions.filter((a) => targetOf(a) === id)) {
+      console.log(`  ${line(action, home, via)}`);
+    }
+    const same = plan.unchanged.filter((d) => d.target === id).length;
+    if (same) console.log(paint("dim", `  = ${same} unchanged`));
+  }
+  if (ids.size === 0) console.log("\nNothing selected.");
+}
+
+/** One-line tally, e.g. "2 created · 1 removed · 14 unchanged". */
+export function summarize(plan: Plan): string {
+  const count = (pred: (a: Action) => boolean) => plan.actions.filter(pred).length;
+  const backedUp = count(
+    (a) => a.type === "conflict" && a.resolution === "backup",
+  );
+  return [
+    `${count((a) => a.type === "create")} created`,
+    `${count((a) => a.type === "update")} updated`,
+    `${count((a) => a.type === "remove")} removed`,
+    `${plan.unchanged.length} unchanged`,
+    ...(backedUp ? [`${backedUp} backed up`] : []),
+  ].join(" · ");
+}
