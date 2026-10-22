@@ -25,6 +25,17 @@ test("omits unknown effort values", () => {
   expect("model_reasoning_effort" in parsed).toBe(false);
 });
 
+test("writes developer_instructions as a multi-line string with literal newlines", () => {
+  const toml = translateAgent(agent("name: a\ndescription: b"));
+  expect(toml).toContain('developer_instructions = """\nDo the thing.\n\nThen stop."""');
+});
+
+test("round-trips backslashes, triple quotes and quotes in the body exactly", () => {
+  const body = 'C:\\new "x" """y""" \r\nend "';
+  const parsed = parse(translateAgent(`---\nname: a\ndescription: b\n---\n\n${body}\n`)!);
+  expect(parsed.developer_instructions).toBe(body);
+});
+
 test("rejects an agent without a description", () => {
   expect(translateAgent(agent("name: a"))).toBeUndefined();
 });
