@@ -199,6 +199,20 @@ allocated", another worktree hashed to the same block. Dev uses +0/+1 and the QA
 stack uses +10..+13. The directory name stays stable even if you rename the
 branch. Import the scripts once in the T3 project settings.
 
+## Checks and CI
+
+Run `bun run check` to validate the repo before you commit. It reads the skills, the agents and the MCP plugin. It applies the rules of Claude Code, Codex, GitHub Copilot and IBM Bob.
+
+- Each skill folder has a `SKILL.md`. Its `name` equals the folder name and uses lowercase words with hyphens (64 characters or fewer).
+- Each skill has a `description` of 1024 characters or fewer. `metadata` is a mapping. `metadata.requires` names existing skills.
+- Each agent file has a `name` that equals the file name, and a `description`.
+- `shared/plugins/mcp/.mcp.json` gives each server a `command` or a `url`.
+- `.claude-plugin/marketplace.json` points to plugins that exist and have the same name.
+
+Each problem prints as `FAIL <path>: <reason>`, and the command exits with 1. Problems in `use-railway` print as `WARN` because it comes from upstream.
+
+The GitHub Actions workflow `.github/workflows/check.yml` runs `bun test`, `bunx tsc --noEmit` and `bun run check` on each push to `main` and on each pull request.
+
 ## Also here
 
 - `claude-heartbeat/` — a timer that keeps Claude usage blocks chained (see its README).
