@@ -94,10 +94,6 @@ allocated, another worktree hashed to the same block. Dev uses +0/+1 and the QA
 stack +10..+13. The directory name is stable even if the branch is renamed.
 Import the scripts once in the T3 project settings.
 
-The `apiKeyHelper` in `shared/settings.json` expects `$HOME/.config/cliproxy/token`
-to exist, so hosts without it should not link `settings.json` (use
-`install.sh --skills-only`, `--instructions-only` or `--agents-only`).
-
 ## Also here
 
 - `claude-heartbeat/` — timer that keeps Claude usage blocks chained (see its README).

@@ -22,9 +22,6 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "env": {
-    "ANTHROPIC_BASE_URL": "https://cliproxy.vkav.dev",
-    "ANTHROPIC_API_KEY": "",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
-  },
-  "apiKeyHelper": "cat \"$HOME/.config/cliproxy/token\""
+  }
 }
