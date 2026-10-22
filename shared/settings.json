@@ -1,27 +1,13 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git show:*)",
-      "Bash(git status:*)",
-      "Bash(git rev-parse:*)",
-      "Bash(git worktree list:*)",
-      "Bash(git stash list:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr diff:*)",
-      "Bash(gh pr list:*)",
-      "Bash(gh pr checks:*)",
-      "Bash(acli jira workitem view:*)",
-      "Bash(acli jira workitem search:*)",
-      "Bash(sqlite3:*)"
-    ]
-  },
-  "model": "claude-fable-5-1",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "env": {
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    }
   }
 }
