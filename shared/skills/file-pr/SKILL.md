@@ -6,21 +6,21 @@ argument-hint: "[base branch]"
 
 # File PR
 
-Before filing, check whether a PR for this branch already exists (`gh pr view --json url,baseRefName`).
+Before you file, check if a PR for this branch already exists (`gh pr view --json url,baseRefName`).
 
-Then settle the base branch, in this order:
+Then choose the base branch. Use the first rule that gives an answer:
 
-1. The one the user named.
+1. The base branch the user named.
 2. The base of the existing PR.
-3. The project profile's base-branch rules: `basename -s .git "$(git remote get-url origin)"` gives a name; if a skill with that name sits next to this one (`../<name>/SKILL.md`), or failing that a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, read its **workflow** file.
-4. Without a profile, if the repo cuts `release-*` or similar branches, the one the work targets. Several can be open at once, so if it is not obvious from the ticket, labels, or branch point, ask rather than taking the newest.
+3. The project profile's base-branch rules. `basename -s .git "$(git remote get-url origin)"` gives a name. If a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **workflow** file. If not, look for a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, and read its **workflow** file.
+4. Without a profile, if the repo cuts `release-*` or similar branches, the branch that the work targets. Several can be open at once. If the ticket, the labels, or the branch point do not make it clear, ask. Do not take the newest branch.
 5. The repo's default branch: `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
 
-Fetch it, review `git diff origin/<base>...HEAD` to make sure the contents match the goal, and pass `--base <base>` when creating the PR.
+Fetch the base branch. Review `git diff origin/<base>...HEAD` to make sure the contents match the goal. Pass `--base <base>` when you create the PR.
 
-Do not mention jira tickets on the PR title or description unless the user explicitly asks for it. If the user wants to link a Jira ticket, add it to the PR description only as a trailing `Jira: [<ticket>](<link>)` line at the end of the description.
+Do not mention Jira tickets in the PR title or description, unless the user explicitly asks for it. If the user wants to link a Jira ticket, add it only as a trailing `Jira: [<ticket>](<link>)` line at the end of the description.
 
-PR titles usually become commit messages, so follow the repository's title conventions. Look at recently merged PRs and Git history for examples. Prefer a concise, human-readable title that explains why the changes matter:
+PR titles usually become commit messages, so follow the repository's title conventions. Look at recently merged PRs and the Git history for examples. Write a concise, human-readable title that explains why the changes matter:
 
 BAD
 > ❌ perf(server): negotiate permessage-deflate on the websocket
@@ -28,7 +28,7 @@ BAD
 GOOD
 > ✅ perf(server): cut websocket frame size by 70%+ with gzipping
 
-Open the description with a simple explanation of the problem based on the user's original prompt, then briefly explain the solution. Do not lead with an implementation inventory:
+Open the description with a simple explanation of the problem, based on the user's original prompt. Then explain the solution briefly. Do not lead with an implementation inventory:
 
 BAD
 > ❌ Removed implicit workspace carry-over from every "new thread" entry point (cmd+n / cmd+shift+o, sidebar v1/v2 buttons, command palette). New threads inherit only the project from context; branch, worktree, and env mode always come from the configured defaults. Deleted buildContextualThreadOptions, startNewThreadInProjectFromContext, and the v1 sidebar's seed-context machinery.
@@ -38,7 +38,7 @@ GOOD
 
 ## Always write the body to a file
 
-Never pass the description with `--body "..."`. Inline HTML, backticks and `$` get mangled by shell escaping, which silently corrupts the description. Write it to a temp file and use `--body-file`:
+Never pass the description with `--body "..."`. Shell escaping mangles inline HTML, backticks and `$`, and this silently corrupts the description. Write the description to a temp file and use `--body-file`:
 
 ```bash
 gh pr create --base <base> --title "…" --body-file /tmp/pr-body.md
@@ -46,14 +46,14 @@ gh pr create --base <base> --title "…" --body-file /tmp/pr-body.md
 
 ## Images and screenshots
 
-The `https://github.com/user-attachments/assets/<uuid>` URLs used across this repo's merged PRs are minted by a cookie-authenticated browser upload. `gh` and its token cannot produce them — do not attempt it, and do not invent such URLs.
+The `https://github.com/user-attachments/assets/<uuid>` URLs in this repo's merged PRs come from a cookie-authenticated browser upload. `gh` and its token cannot produce them. Do not try, and do not invent such URLs.
 
-These never render in a PR body, even though they look correct locally:
+These never render in a PR body, even if they look correct locally:
 
 - relative paths (`./docs/shot.png`) — GitHub does not resolve them in issue/PR bodies
 - local absolute paths (`/Users/…/shot.png`, `/tmp/shot.png`)
-- `data:` base64 URIs — stripped by GitHub's markdown sanitizer
-- raw URLs pointing at a private repo — render for the author, 404 for reviewers
+- `data:` base64 URIs — the markdown sanitizer of GitHub strips them
+- raw URLs that point at a private repo — they render for the author, but give 404 for reviewers
 
 These do render:
 
@@ -62,7 +62,7 @@ These do render:
 
 ### Preferred: host on the assets repo
 
-For screenshots, commit the image to the user's public assets repo and embed the raw URL. This is fully scriptable, permanent, and keeps binaries out of the product repo's diff.
+For screenshots, commit the image to the user's public assets repo and embed the raw URL. You can script all of this. It is permanent, and it keeps binaries out of the product repo's diff.
 
 ```bash
 mkdir -p ~/projects/pr-assets/<repo>/<branch-slug>
@@ -73,9 +73,9 @@ git -C ~/projects/pr-assets push
 # → https://raw.githubusercontent.com/viktoravelino/pr-assets/main/<repo>/<branch-slug>/before.png
 ```
 
-If `~/projects/pr-assets` or `viktoravelino/pr-assets` does not exist, **ask before creating it** — it is a public repo and creating one is an outward-facing action. Do not push screenshots to a branch of the product repo itself.
+If `~/projects/pr-assets` or `viktoravelino/pr-assets` does not exist, **ask before you create it**. It is a public repo, and creating one is an outward-facing action. Do not push screenshots to a branch of the product repo itself.
 
-Verify each URL returns 200 before filing:
+Before you file, verify that each URL returns 200:
 
 ```bash
 curl -sIL -o /dev/null -w '%{http_code}\n' "<raw-url>"
@@ -83,18 +83,18 @@ curl -sIL -o /dev/null -w '%{http_code}\n' "<raw-url>"
 
 ### When browser upload is required
 
-Video (`.mp4`, `.mov`) only renders as an inline player when uploaded through the web UI; a raw URL renders as a bare link. Same if the user prefers matching the repo's `user-attachments` convention. In that case file the PR with a clearly marked placeholder line, then hand off:
+Video (`.mp4`, `.mov`) renders as an inline player only when you upload it through the web UI. A raw URL renders as a bare link. The same applies if the user prefers to match the repo's `user-attachments` convention. In that case, file the PR with a clearly marked placeholder line, then hand off:
 
 ```bash
 gh pr create --title "…" --body-file /tmp/pr-body.md
 gh pr view --web    # user drags the file onto the placeholder; GitHub rewrites it
 ```
 
-Tell the user explicitly which placeholder to replace. Do not claim the PR has images until they have been attached.
+Tell the user which placeholder to replace. Do not say that the PR has images until the user has attached them.
 
 ### Formatting
 
-Use `<img>` rather than `![]()` — markdown images always render full-bleed, `width` gives control. Before/after belongs in a two-column table:
+Use `<img>`, not `![]()`. Markdown images always render full-bleed, and `width` gives you control. Put before/after images in a two-column table:
 
 ```html
 <table>
@@ -106,4 +106,4 @@ Use `<img>` rather than `![]()` — markdown images always render full-bleed, `w
 </table>
 ```
 
-Wrap sets of more than three screenshots in `<details><summary>Screenshots</summary>…</details>`. Write real `alt` text describing what the image shows — not "before"/"screenshot".
+Wrap sets of more than three screenshots in `<details><summary>Screenshots</summary>…</details>`. Write real `alt` text that describes what the image shows, not "before" or "screenshot".

@@ -6,23 +6,23 @@ argument-hint: "[since date | all repos]"
 
 # Standup
 
-Pull recent activity, turn it into a short update the user can paste, and stop. **You do not post it.**
+Pull recent activity and turn it into a short update that the user can paste. Then stop. **Do not post it.**
 
 ## Window and scope
 
-- **Since**: the previous working day — Friday when today is Monday — unless the user gives a date. Use it as `<since>` (`YYYY-MM-DD`) below.
-- **Scope**: work, as defined by the project profiles. Find them next to this skill:
+- **Since**: the previous working day (Friday when today is Monday), unless the user gives a date. Use it as `<since>` (`YYYY-MM-DD`) below.
+- **Scope**: work, as the project profiles define it. Find the profiles next to this skill:
 
   ```sh
   grep -l 'kind: project-profile' ../*/SKILL.md
   ```
 
-  Each profile's **workflow** file has a "Standup scope" section with a GitHub org and a Jira project. Run the queries below once per profile. With no profiles, ask the user which org and Jira project count as work.
-- **Everything**: when the user asks for all repos, drop the `--owner` filter and skip Jira project filtering.
+  The **workflow** file of each profile has a "Standup scope" section with a GitHub org and a Jira project. Run the queries below once for each profile. If there are no profiles, ask the user which org and Jira project count as work.
+- **Everything**: when the user asks for all repos, drop the `--owner` filter and do not filter by Jira project.
 
 ## Gather
 
-Run these in parallel; they are independent. `<org>` and `<project>` come from the profile.
+Run these queries in parallel. They are independent. `<org>` and `<project>` come from the profile.
 
 ```sh
 # PRs opened, updated, or merged
@@ -46,19 +46,19 @@ acli jira workitem search --jql "project = <project> AND assignee = currentUser(
   --fields "key,status,summary" --json
 ```
 
-For each open authored PR, check whether it is blocked: `gh pr checks <n> --repo <repo>` for red CI, and `gh pr view <n> --repo <repo> --json reviewDecision` for `CHANGES_REQUESTED`.
+For each open PR that the user authored, check if it is blocked. Use `gh pr checks <n> --repo <repo>` for red CI. Use `gh pr view <n> --repo <repo> --json reviewDecision` for `CHANGES_REQUESTED`.
 
-Jira has no "commented by me" query here, so comment-only activity will be missing; the user can add it.
+Jira has no "commented by me" query here, so comment-only activity is missing. The user can add it.
 
 ## Sort it
 
-- **Yesterday**: PRs merged or opened, reviews given, tickets moved. Merge a PR and its ticket into one line when they are the same work.
-- **Today**: tickets in progress, open PRs that need a follow-up (changes requested, red CI), and reviews waiting on the user. This is a best guess from the data — say so, and let the user reorder.
-- **Blockers**: only real ones found in the data (red CI not caused by the PR, a PR waiting on review for days, a ticket blocked by another). Otherwise write `None`.
+- **Yesterday**: PRs merged or opened, reviews given, and tickets moved. If a PR and a ticket are the same work, write them as one line.
+- **Today**: tickets in progress, open PRs that need a follow-up (changes requested, red CI), and reviews that wait on the user. This is a best guess from the data. Say so, and let the user reorder it.
+- **Blockers**: only real blockers that you find in the data (red CI that the PR did not cause, a PR that waits for review for days, a ticket that another ticket blocks). If there are none, write `None`.
 
 ## Output
 
-One fenced block, plain text so it pastes cleanly into chat:
+Write one fenced block of plain text, so that it pastes cleanly into chat:
 
 ```
 Yesterday
@@ -74,8 +74,8 @@ Blockers
 
 Rules:
 
-- One line per item, ticket key first when there is one, then a plain-language summary — not the raw ticket title if it is long.
-- PRs as `repo#number`; no URLs unless the user asks.
-- No headers, emoji, or filler beyond the three sections.
+- Write one line for each item. Put the ticket key first when there is one. Then write a plain-language summary. If the ticket title is long, do not use it as it is.
+- Write PRs as `repo#number`. Do not add URLs unless the user asks.
+- Do not add headers, emoji, or filler beyond the three sections.
 
-After the block, one short line naming anything you could not see (for example, a query that failed) — otherwise say nothing.
+After the block, write one short line that names anything you could not see (for example, a query that failed). If there is nothing, say nothing.

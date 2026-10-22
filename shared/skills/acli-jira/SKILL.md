@@ -1,58 +1,58 @@
 ---
 name: acli-jira
-description: Use acli to manage Jira tickets -- search, view, create, edit, transition, assign, comment, link, and more from the command line.
+description: Use acli to manage Jira tickets from the command line -- search, view, create, edit, transition, assign, comment, link, and more.
 argument-hint: "[ticket key or what to do]"
 ---
 
 ## Purpose
 
-Use this skill when you need to interact with Jira: reading tickets, creating new work items, updating existing ones, searching with JQL, transitioning status, assigning, commenting, linking, or browsing projects and boards. `acli jira` provides Jira Cloud management from the CLI.
+Use this skill when you work with Jira. It covers reading tickets, creating new tickets, updating existing ones, searching with JQL, changing status, assigning, commenting, linking, and browsing projects and boards. `acli jira` manages Jira Cloud from the CLI.
 
-**Before creating or changing tickets, read [`boards.md`](boards.md) next to this file if it exists.** It holds the conventions for the boards actually in use (project key, types, labels, statuses, custom fields). It is gitignored and stays local.
+**Before you create or change tickets, read [`boards.md`](boards.md) next to this file, if it exists.** It holds the conventions for the boards in use (project key, types, labels, statuses, custom fields). Git ignores it, and it stays local.
 
 ## When to use what
 
-- `acli jira workitem view`: Read one ticket by key (positional). Use for details, parent, links, any field.
-- `acli jira workitem search`: Find tickets with JQL. Use for any search, filtering, or listing.
+- `acli jira workitem view`: Read one ticket by key (positional). Use it for details, parent, links, or any field.
+- `acli jira workitem search`: Find tickets with JQL. Use it for any search, filter, or list.
 - `acli jira workitem create`: Create a ticket.
 - `acli jira workitem edit`: Change summary, description, labels, type, or assignee.
 - `acli jira workitem transition`: Move a ticket to a new status.
 - `acli jira workitem assign`: Change or remove the assignee.
-- `acli jira workitem comment create|list|update|delete`: Work with comments.
-- `acli jira workitem link create|list|type|delete`: Work with links between tickets.
-- `acli jira workitem attachment list|delete`: List or delete attachments (acli cannot upload).
-- `acli jira workitem clone`: Duplicate tickets, optionally into another project.
-- `acli jira project list|view`: Discover projects and their issue types.
-- `acli jira board search|view|list-sprints`: Find boards; sprints exist only on scrum boards.
-- `acli jira sprint list-workitems`: Tickets in a sprint (requires `--sprint` and `--board`).
+- `acli jira workitem comment create|list|update|delete`: Manage comments.
+- `acli jira workitem link create|list|type|delete`: Manage links between tickets.
+- `acli jira workitem attachment list|delete`: List or delete attachments. acli cannot upload.
+- `acli jira workitem clone`: Duplicate tickets. You can put the copies in another project.
+- `acli jira project list|view`: Find projects and their issue types.
+- `acli jira board search|view|list-sprints`: Find boards. Only scrum boards have sprints.
+- `acli jira sprint list-workitems`: List the tickets in a sprint. It needs `--sprint` and `--board`.
 
 ## Core concepts
 
 - **Use `--json` on reads** (`view`, `search`, `comment list`, `link list`, `project list`, ...).
-- **Use `--yes` on bulk-capable mutations** (`edit`, `transition`, `assign`, `clone`, `link create`) so they never wait on a prompt. `create` and `comment create` have no `--yes` flag.
+- **Use `--yes` on bulk-capable mutations** (`edit`, `transition`, `assign`, `clone`, `link create`) so they do not wait for a prompt. `create` and `comment create` have no `--yes` flag.
 - **Keys**: `view` takes the key as a positional argument. Every other command takes `--key`, and most accept a comma-separated list (`--key "PROJ-1,PROJ-2"`). `comment list` and `link list` take exactly one `--key`.
-- **Bulk targets**: `edit`, `transition`, `assign`, `clone`, and `comment create` also accept `--jql` or `--filter` instead of `--key`. Treat these as dangerous — confirm the match count with `search --count` first.
-- **`@me`** means the authenticated user in `--assignee`; `default` means the project's default assignee.
-- **Labels**: `create` uses `--label`, `edit` uses `--labels` / `--remove-labels`. Both are comma-separated.
-- **Work item types** are project-specific and case-sensitive. Read them from `acli jira project view --key PROJ --json` (`issueTypes[].name`) rather than guessing `Story` or `Sub-task`.
-- **Descriptions and comment bodies** accept plain text or Atlassian Document Format (ADF). Use `--description-file` / `--body-file` for anything multi-line to avoid shell escaping.
+- **Bulk targets**: `edit`, `transition`, `assign`, `clone`, and `comment create` also accept `--jql` or `--filter` instead of `--key`. These are dangerous. First confirm the match count with `search --count`.
+- **`@me`** means the authenticated user in `--assignee`. `default` means the project's default assignee.
+- **Labels**: `create` uses `--label`. `edit` uses `--labels` and `--remove-labels`. Both take a comma-separated list.
+- **Ticket types** are specific to each project and are case-sensitive. Read them from `acli jira project view --key PROJ --json` (`issueTypes[].name`). Do not guess `Story` or `Sub-task`.
+- **Descriptions and comment bodies** accept plain text or Atlassian Document Format (ADF). For multi-line text, use `--description-file` or `--body-file`. This avoids shell escaping.
 
 ## Known limits
 
-Verified against acli 1.3.36 and the current reference docs:
+These limits are verified against acli 1.3.36 and the current reference docs:
 
-- **`search --fields` only accepts a subset of fields.** `key`, `issuetype`, `summary`, `status`, `assignee`, `priority`, `labels`, `reporter` work; `parent`, `issuelinks`, `components`, `fixVersions`, `sprint`, `created`, `updated` are rejected with `field '<x>' is not allowed`. Filter on those in the JQL instead, then `view` individual tickets for the values.
-- **`view --fields` accepts any field**, plus `*all` and `*navigable`, and `-field` to exclude. The default set does not include comments or links.
-- **Custom fields can only be set at creation**, via `create --from-json` with `additionalAttributes`. `edit --from-json` has no `additionalAttributes`, so custom fields cannot be changed with acli.
-- **No priority, component, or fix-version flags** on `create` or `edit`.
+- **`search --fields` accepts only some fields.** These work: `key`, `issuetype`, `summary`, `status`, `assignee`, `priority`, `labels`, `reporter`. These fail with `field '<x>' is not allowed`: `parent`, `issuelinks`, `components`, `fixVersions`, `sprint`, `created`, `updated`. Filter on them in the JQL instead. Then `view` single tickets to get the values.
+- **`view --fields` accepts any field**, plus `*all` and `*navigable`. Use `-field` to exclude a field. The default set does not include comments or links.
+- **You can set custom fields only at creation**, with `create --from-json` and `additionalAttributes`. `edit --from-json` has no `additionalAttributes`, so acli cannot change custom fields.
+- **`create` and `edit` have no flags** for priority, component, or fix version.
 - **Sprints**: `board list-sprints` fails with "The board does not support sprints" on kanban and simple boards.
 
 ## Recommended workflow
 
-1. **Read `boards.md`** for the project you are working in. If there is none, discover with `acli jira project list --recent --json` and `acli jira project view --key PROJ --json`.
+1. **Read `boards.md`** for the project you work in. If there is no entry, find the project with `acli jira project list --recent --json` and `acli jira project view --key PROJ --json`.
 2. **Search**: `acli jira workitem search --jql "project = PROJ AND ..." --json`.
-3. **View**: `acli jira workitem view PROJ-123 --json`, then comments and links for the full picture.
-4. **Create/edit/transition** using the commands below.
+3. **View**: `acli jira workitem view PROJ-123 --json`. Then read the comments and links to see the full picture.
+4. **Create, edit, or transition** with the commands below.
 
 ## Common JQL patterns
 
@@ -79,7 +79,7 @@ Verified against acli 1.3.36 and the current reference docs:
 --jql "project = PROJ AND updated >= -7d ORDER BY updated DESC"
 ```
 
-Priority names are project-specific too (`High/Highest` on some, `Critical/Major/Minor` on others).
+Priority names are also specific to each project (`High/Highest` on some, `Critical/Major/Minor` on others).
 
 ## Examples
 
@@ -158,7 +158,7 @@ acli jira workitem transition --key "PROJ-123" --status "In Progress" --yes --js
 acli jira workitem transition --key "PROJ-1,PROJ-2" --status "Done" --yes --json
 ```
 
-Status names are project-specific and case-sensitive. If a transition fails, the error lists the valid ones.
+Status names are specific to each project and are case-sensitive. If a transition fails, the error lists the valid names.
 
 ### Assign a ticket
 
@@ -184,7 +184,7 @@ acli jira workitem comment update --key "PROJ-123" --id 10001 --body-file /tmp/c
 acli jira workitem comment delete --key "PROJ-123" --id 10001
 ```
 
-`comment update` also takes `--body-adf <json file>`, `--visibility-role` / `--visibility-group`, and `--notify` (off by default). The reference docs show `comment delete --issue`, but the real flag is `--key`.
+`comment update` also takes `--body-adf <json file>`, `--visibility-role`, `--visibility-group`, and `--notify` (off by default). The reference docs show `comment delete --issue`, but the real flag is `--key`.
 
 ### Links
 
@@ -208,7 +208,7 @@ acli jira sprint list-workitems --sprint 101 --board 42 --json
 
 ## Important tips
 
-- When creating tickets without a `boards.md` entry, ask the user for the **project key**.
-- Pick **labels** from the ones the project already uses (see `boards.md`, or search recent tickets) rather than inventing new ones.
+- When you create a ticket and there is no `boards.md` entry, ask the user for the **project key**.
+- Pick **labels** from the labels the project already uses (see `boards.md`, or search recent tickets). Do not invent new ones.
 - For large result sets, use `--limit` or `--paginate`.
-- If acli prints "You're using an outdated version", mention it once; `brew upgrade acli` is the user's call.
+- If acli prints "You're using an outdated version", mention it once. The user decides whether to run `brew upgrade acli`.

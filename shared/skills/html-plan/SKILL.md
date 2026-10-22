@@ -1,24 +1,24 @@
 ---
 name: html-plan
-description: Direct-invocation specialist for clear, self-contained HTML plans that preserve source material while improving hierarchy, sequence, ownership, dependencies, and reviewability. Invoked explicitly with /html-plan; never loaded automatically.
+description: Direct-invocation specialist for clear, self-contained HTML plans. It keeps the source material and improves hierarchy, sequence, ownership, dependencies, and reviewability. The user invokes it explicitly with /html-plan; the agent never loads it automatically.
 argument-hint: "[plan file or notes to turn into a plan]"
 disable-model-invocation: true
 ---
 
 # HTML Plan
 
-Turn source material into a plan people can inspect and act on. Preserve the user's scope, ordering, commitments, and terminology unless they ask for broader synthesis.
+Turn source material into a plan that people can inspect and act on. Keep the user's scope, ordering, commitments, and terminology, unless the user asks for broader synthesis.
 
 ## Shape the document around the work
 
-Read the conversation, project instructions, and supplied plan before designing. Match an existing design language when one is present. Otherwise derive a quiet, workmanlike direction from the audience and subject.
+Before you design, read the conversation, the project instructions, and the supplied plan. If an existing design language is present, match it. If not, derive a quiet, workmanlike direction from the audience and subject.
 
 When [`design-artifact`](../design-artifact/SKILL.md) is available, read its
-fundamentals to make that direction intentional. Keep this skill's traceability
-and source-preservation rules authoritative; creative direction must not
-inflate the plan into a dashboard or campaign page.
+fundamentals to make that direction intentional. The traceability and
+source-preservation rules of this skill have priority. Creative direction must
+not inflate the plan into a dashboard or campaign page.
 
-Decide what the plan actually needs:
+Decide what the plan needs:
 
 - phases or sequence;
 - status and decision points;
@@ -27,21 +27,26 @@ Decide what the plan actually needs:
 - acceptance checks;
 - unresolved questions.
 
-Do not add a timeline, progress percentage, status badge, or dashboard summary unless the source supports it. Improve grammar and structure without inflating an implementation plan into a strategy document.
+Do not add a timeline, progress percentage, status badge, or dashboard summary, unless the source supports it. Improve grammar and structure, but do not inflate an implementation plan into a strategy document.
 
 ## Preserve traceability
 
-- Keep source commitments recognizable.
-- Separate accepted decisions from assumptions and open questions.
+- Keep the source commitments recognizable.
+- Keep accepted decisions separate from assumptions and open questions.
 - Show sequence and dependency only where they are real.
 - Use tables for exact mappings, comparisons, or repeated fields.
-- Use a flow or timeline only when it makes order materially easier to understand.
-- Keep long prose readable instead of forcing every paragraph into a card.
+- Use a flow or timeline only when it makes the order much easier to understand.
+- Keep long prose readable. Do not force every paragraph into a card.
 
 ## Build and verify
 
-Deliver one responsive, accessible, self-contained HTML file. Use semantic headings, lists, tables, and landmarks. Keep essential CSS and JavaScript inline, avoid external services, and make any navigation or disclosure keyboard-operable.
+Deliver one responsive, accessible, self-contained HTML file. Use semantic headings, lists, tables, and landmarks. Keep essential CSS and JavaScript inline. Do not use external services. Make any navigation or disclosure keyboard-operable.
 
-Inspect the result at wide and narrow widths. Check that no commitment disappeared, that stages remain in the intended order, that ownership and dependencies are legible, and that long content does not overflow.
+Inspect the result at wide and narrow widths. Check these points:
 
-Return the absolute path and note any structural interpretation you introduced.
+- No commitment disappeared.
+- The stages stay in the intended order.
+- Ownership and dependencies are legible.
+- Long content does not overflow.
+
+Return the absolute path. Note any structural interpretation that you introduced.

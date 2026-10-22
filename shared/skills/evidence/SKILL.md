@@ -6,11 +6,15 @@ user-invocable: false
 
 # Evidence
 
-A claim that something is broken or fixed is only as good as what backs it. This skill is the one place that says where that backing lives and what makes it trustworthy. The skills that reference it own *what* they capture; this owns *where* and *how*.
+A claim that something is broken or fixed is only as good as the proof behind it. This skill is the one place that says where the proof lives and what makes it trustworthy. The skills that reference it own *what* they capture. This skill owns *where* and *how*.
 
 ## The store
 
-Evidence is browsable at `.evidence/` in the checkout, but the real bytes live under the **common** git dir, keyed by the checkout's directory name. That keeps them alive when a worktree is pruned (a validation is often days older than its fix), keeps several worktrees of one repo apart, and puts a ticket's validation, captures, and reviews under one key.
+You can browse evidence at `.evidence/` in the checkout. The real bytes live under the **common** git dir, keyed by the checkout's directory name. This has three effects:
+
+- The evidence stays when a worktree is pruned (a validation is often days older than its fix).
+- Several worktrees of one repo stay apart.
+- A ticket's validation, captures and reviews sit under one key.
 
 ```
 <git-common-dir>/evidence/<worktree>/   real bytes, durable
@@ -22,7 +26,7 @@ Evidence is browsable at `.evidence/` in the checkout, but the real bytes live u
   reviews/                              adversarial-review findings, <UTC timestamp>.json + latest.json
 ```
 
-Set it up with this, from anywhere inside the checkout. It is idempotent: run it every time, whether or not an earlier skill already did, and recreating a worktree of the same name re-links to evidence that is still there.
+Set it up with the commands below, from anywhere inside the checkout. The setup is idempotent. Run it every time, even if an earlier skill already did. If you recreate a worktree of the same name, the setup links it again to the evidence that is still there.
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
@@ -34,44 +38,44 @@ ln -sfn "$EVID" .evidence
 grep -qxF '.evidence' "$COMMON/info/exclude" 2>/dev/null || { mkdir -p "$COMMON/info"; echo '.evidence' >> "$COMMON/info/exclude"; }
 ```
 
-Why it is written this way:
+Why the setup is written this way:
 
-- `--git-common-dir`, not `--git-dir`: the per-worktree git dir dies with the worktree.
-- The exclude goes in the **common** `info/exclude` — git ignores the per-worktree copy — and never in the repo's `.gitignore`. The pattern has no trailing slash, which would match only directories and miss the symlink. The real bytes need no exclude; nothing under `.git/` is tracked.
+- It uses `--git-common-dir`, not `--git-dir`, because the per-worktree git dir dies with the worktree.
+- The exclude goes in the **common** `info/exclude`, because git ignores the per-worktree copy. It never goes in the repo's `.gitignore`. The pattern has no trailing slash. A trailing slash would match only directories and would miss the symlink. The real bytes need no exclude, because git does not track anything under `.git/`.
 
-Outside a ticket worktree (a quick `diagnose` in the main checkout), use `/tmp/debug-<slug>/` instead so one-off probes do not pile up under the main checkout's key.
+Outside a ticket worktree (for example a quick `diagnose` in the main checkout), use `/tmp/debug-<slug>/` instead. This way one-off probes do not pile up under the main checkout's key.
 
 ## Probes
 
-- Probes live in `.evidence/probes/` (or the `/tmp` folder above), never in product code. Name them for what they check.
-- **Anything that can loop, grow, or hang gets a watchdog before its first run** — a timeout, an iteration cap, an RSS limit with a hard exit. A probe must never be able to take the machine down.
-- Anything that needs a running app follows `dev-servers`: isolated ports, never the user's running stack.
-- Prefer the smallest harness that still shows the behavior: an in-process script for a pure code path, the live app only when the behavior is only visible end to end.
-- When a third-party endpoint is involved, stand up a mock upstream; its request log proves where traffic did and did not go.
-- Write probes so they can be rerun unchanged. The same script that showed the bug is what proves the fix.
+- Keep probes in `.evidence/probes/` (or in the `/tmp` folder above). Never put them in product code. Name each probe for what it checks.
+- **Give a watchdog to anything that can loop, grow or hang, before its first run.** Use a timeout, an iteration cap, or an RSS limit with a hard exit. A probe must never be able to take the machine down.
+- For anything that needs a running app, follow `dev-servers`: use isolated ports, and never the user's running stack.
+- Use the smallest harness that still shows the behavior. Use an in-process script for a pure code path. Use the live app only when the behavior is visible only end to end.
+- When a third-party endpoint is involved, start a mock upstream. Its request log proves where traffic did and did not go.
+- Write probes so you can run them again unchanged. The same script that showed the bug proves the fix.
 
 ## What counts as proof
 
-Be precise about what an artifact shows. "The mock server received only model-listing requests, never an embeddings request" proves misrouting; a red toast does not. Inspect what was persisted or returned, not only what the UI displayed.
+Be precise about what an artifact shows. "The mock server received only model-listing requests, never an embeddings request" proves misrouting. A red toast does not. Inspect what the system persisted or returned, not only what the UI displayed.
 
-**The environment can mask the claim.** A key in `.env`, a warm cache, or existing data can turn the reported failure into a different one, or hide it. When that happens, say so and close the gap deliberately — rerun the same state without the masking key, against a fresh database, or with the cache cleared.
+**The environment can mask the claim.** A key in `.env`, a warm cache or existing data can turn the reported failure into a different one, or hide it. When this happens, say so and close the gap on purpose. Run the same state again without the masking key, against a fresh database, or with the cache cleared.
 
-Label what you could not prove. Code-only reasoning is a hypothesis, and says so.
+Label what you could not prove. Code-only reasoning is a hypothesis, and you must say so.
 
 ## Before and after
 
-`before/` can only be captured while the old state still exists — the broken behavior, the un-built screen — so capture it even when the claim looks obviously true.
+You can capture `before/` only while the old state still exists (the broken behavior, the screen that is not built yet). Capture it even when the claim looks obviously true.
 
-`after/` is the matching half of every `before/` artifact. **Matching is the whole point**: same script, same viewport, same route, same data, same command. Reuse the capture scripts in `probes/`. A pair shot from two different angles proves nothing.
+`after/` is the matching half of every `before/` artifact. **Matching is the whole point**: use the same script, viewport, route, data and command. Reuse the capture scripts in `probes/`. A pair shot from two different angles proves nothing.
 
-If a `before/` artifact is missing once the change exists: `git stash`, restart what needs restarting, capture it, `git stash pop`. Never reconstruct it from memory, and never present an after-only capture as a comparison.
+If a `before/` artifact is missing after the change exists, do these steps in order: run `git stash`, restart what needs a restart, capture the artifact, then run `git stash pop`. Never rebuild it from memory. Never present an after-only capture as a comparison.
 
-Number captures so the pair is obvious (`before/03-dialog-open.png` ↔ `after/03-dialog-open.png`).
+Number the captures so the pair is obvious (`before/03-dialog-open.png` ↔ `after/03-dialog-open.png`).
 
 ## Sharing
 
-`.evidence/` never leaves the machine — it is git-excluded and has no URL. Screenshots that belong in a PR are copied to the public assets repo as `file-pr` describes; prose findings are pasted, not linked.
+`.evidence/` never leaves the machine. Git excludes it and it has no URL. Copy the screenshots that belong in a PR to the public assets repo, as `file-pr` describes. Paste prose findings. Do not link them.
 
 ## Cleanup
 
-Everything a probe created in a shared or live environment is removed, and the removal is reported: test records, provider config, inserted rows, mock servers, background processes, temp ports. The evidence itself stays — it is the deliverable.
+Remove everything that a probe created in a shared or live environment, and report the removal. This includes test records, provider config, inserted rows, mock servers, background processes and temp ports. Keep the evidence itself. It is the deliverable.

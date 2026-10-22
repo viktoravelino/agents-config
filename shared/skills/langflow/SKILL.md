@@ -1,6 +1,6 @@
 ---
 name: langflow
-description: Project profile for Langflow (langflow-ai/langflow and its worktrees) -- how to run it in isolation, what to check in reviews, branch and PR conventions, the review channel, and Jira scope. Read by the generic skills (dev-servers, adversarial-review, file-pr, request-review, standup) whenever the repository's origin is langflow-ai/langflow or WatsonOrchestrate/IBM-Langflow (the IBM overlay).
+description: Project profile for Langflow (langflow-ai/langflow and its worktrees) -- how to run it in isolation, what to check in reviews, branch and PR conventions, the review channel, and Jira scope. The generic skills (dev-servers, adversarial-review, file-pr, request-review, standup) read it whenever the repository's origin is langflow-ai/langflow or WatsonOrchestrate/IBM-Langflow (the IBM overlay).
 user-invocable: false
 metadata:
   kind: project-profile
@@ -9,7 +9,7 @@ metadata:
 
 # Langflow profile
 
-Project-specific settings for the generic workflow skills. Each file below overrides the generic defaults for one concern; read only the one the current step needs.
+These are the project-specific settings for the generic workflow skills. Each file below overrides the generic defaults for one concern. Read only the file that the current step needs.
 
 | File | Read it from | Covers |
 | --- | --- | --- |

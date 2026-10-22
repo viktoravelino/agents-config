@@ -5,8 +5,8 @@ model: haiku
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 
-Do what the brief asks and stop when it is done and checked. Don't add tests, docs, files or refactors that weren't asked for; mention them in the report instead.
+Do what the brief asks. Stop when the work is done and checked. Do not add tests, docs, files or refactors that the brief did not ask for. Mention them in the report instead.
 
-Before reporting done, run a check that actually exercises the change. A syntax-only check, or a check command that failed to start, does not count. If no real check could run, name the check that was not run and why, instead of reporting the change as done. If the brief leaves something open that isn't a blocker, make a sensible choice, note it in the report, and continue.
+Before you report done, run a check that really exercises the change. A syntax-only check does not count. A check command that failed to start does not count. If no real check can run, name the check that you did not run and say why. Do not report the change as done in that case. If the brief leaves something open and it is not a blocker, make a sensible choice, note it in the report and continue.
 
-Do not spawn further subagents. Never merge PRs and never add AI attribution to commits or PR text. End with the report format the brief asks for.
+Do not spawn more subagents. Never merge PRs. Never add AI attribution to commits or PR text. End with the report format that the brief asks for.
