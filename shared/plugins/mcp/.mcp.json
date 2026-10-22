@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "railway": {
+      "command": "railway",
+      "args": ["mcp"]
+    },
+    "wispr-flow": {
+      "type": "http",
+      "url": "https://api.wisprflow.ai/connect/mcp"
+    }
+  }
+}

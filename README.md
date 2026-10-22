@@ -8,6 +8,7 @@ shared/instructions.md     -> ~/.codex/AGENTS.md, ~/.claude/CLAUDE.md
 shared/skills/<name>/      -> ~/.agents/skills/<name>, ~/.claude/skills/<name>
 shared/settings.json       -> ~/.claude/settings.json  (Claude only)
 shared/agents/<name>.md    -> ~/.claude/agents/<name>.md  (Claude only)
+shared/plugins/mcp/        Claude plugin holding user-wide MCP servers (see below)
 ```
 
 ## Install
@@ -23,6 +24,20 @@ which this repo does not manage.
 
 Links are synced: a skill removed here is unlinked there. Anything the script
 does not own is left alone, and real files in the way are backed up first.
+
+## MCP servers
+
+User-wide MCP servers live in `shared/plugins/mcp/.mcp.json`, not in
+`~/.claude.json` (Claude Code rewrites that file constantly). The repo root is a
+local plugin marketplace (`.claude-plugin/marketplace.json`), and
+`shared/settings.json` registers it under `extraKnownMarketplaces` and enables
+`mcp@agents-config`. Claude reads the plugin straight from this checkout, so an
+edit applies on the next session or after `/reload-plugins`. Servers show up as
+`plugin:mcp:<name>`; OAuth ones authenticate once through `/mcp`.
+
+The marketplace path is absolute, so the repo must live at
+`~/projects/agents-config` on every machine. `claude plugin` commands rewrite
+`settings.json`; check `git diff` after running one.
 
 ## How the skills fit together
 

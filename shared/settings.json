@@ -1,13 +1,24 @@
 {
-  "tui": "fullscreen",
-  "skipDangerousModePermissionPrompt": true,
-  "theme": "dark",
   "env": {
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "enabledPlugins": {
+    "mcp@agents-config": true
+  },
+  "extraKnownMarketplaces": {
+    "agents-config": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/viktoravelino/projects/agents-config"
+      }
+    }
   },
   "modelSettings": {
     "claude-opus-5-5": {
       "effortLevel": "high"
     }
-  }
+  },
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark"
 }

@@ -1,0 +1,12 @@
+{
+  "name": "agents-config",
+  "description": "Personal Claude Code plugins from agents-config",
+  "owner": { "name": "agents-config" },
+  "plugins": [
+    {
+      "name": "mcp",
+      "source": "./shared/plugins/mcp",
+      "description": "User-wide MCP servers"
+    }
+  ]
+}
