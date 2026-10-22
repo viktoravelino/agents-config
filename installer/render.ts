@@ -22,7 +22,7 @@ function line(action: Action, home: string, via: Map<string, string>): string {
       const { desired } = action;
       const notes = [
         desired.note,
-        via.has(desired.source) ? `via ${via.get(desired.source)}` : undefined,
+        desired.kind !== "json-setting" && via.has(desired.source) ? `via ${via.get(desired.source)}` : undefined,
       ].filter(Boolean);
       const glyph = action.type === "create" ? paint("green", "+") : paint("yellow", "~");
       return `${glyph} ${displayPath(desired.path, home)}${notes.length ? paint("dim", `  (${notes.join("; ")})`) : ""}`;
@@ -30,44 +30,54 @@ function line(action: Action, home: string, via: Map<string, string>): string {
     case "remove":
       return `${paint("red", "-")} ${displayPath(action.owned.path, home)}${paint("dim", `  (${action.reason})`)}`;
     case "conflict": {
+      const setting = action.desired?.kind === "json-setting";
       const what =
         action.cause === "in-the-way"
           ? "real file in the way, will be backed up"
-          : `edited since last install, ${action.resolution === "keep" ? "kept" : "will be overwritten, old copy backed up"}`;
+          : `${setting ? "setting has another value" : "edited since last install"}, ${action.resolution === "keep" ? "kept" : "will be overwritten, old copy backed up"}`;
       return `${paint("yellow", "!")} ${displayPath(action.path, home)}${paint("dim", `  (${what})`)}`;
     }
   }
 }
 
-function targetOf(action: Action): string {
+function targetsOf(action: Action): string[] {
   switch (action.type) {
     case "create":
     case "update":
-      return action.desired.target;
+      return action.desired.targets;
     case "remove":
-      return action.owned.target;
+      return action.owned.targets;
     case "conflict":
-      return action.target;
+      return action.targets;
   }
 }
 
-/** Prints the plan grouped by target; unchanged artifacts are only counted. */
+/**
+ * Prints the plan grouped by the targets each line serves; unchanged
+ * artifacts are only counted. Lines shared by several targets (skills in
+ * ~/.agents/skills) appear once, under a "Shared (...)" group listed last.
+ */
 export function renderPlan(
   plan: Plan,
   labels: Map<string, string>,
   home: string,
   via: Map<string, string>,
 ): void {
-  const ids = new Set([...plan.actions.map(targetOf), ...plan.unchanged.map((d) => d.target)]);
-  for (const id of ids) {
-    console.log(`\n${paint("bold", labels.get(id) ?? id)}`);
-    for (const action of plan.actions.filter((a) => targetOf(a) === id)) {
+  const groups = new Map<string, string[]>();
+  for (const targets of [...plan.actions.map(targetsOf), ...plan.unchanged.map((d) => d.targets)]) {
+    groups.set(targets.join(","), targets);
+  }
+  const ordered = [...groups.entries()].sort(([, a], [, b]) => Number(a.length > 1) - Number(b.length > 1));
+  for (const [key, targets] of ordered) {
+    const names = targets.map((id) => labels.get(id) ?? id);
+    console.log(`\n${paint("bold", targets.length > 1 ? `Shared (${names.join(", ")})` : names[0]!)}`);
+    for (const action of plan.actions.filter((a) => targetsOf(a).join(",") === key)) {
       console.log(`  ${line(action, home, via)}`);
     }
-    const same = plan.unchanged.filter((d) => d.target === id).length;
+    const same = plan.unchanged.filter((d) => d.targets.join(",") === key).length;
     if (same) console.log(paint("dim", `  = ${same} unchanged`));
   }
-  if (ids.size === 0) console.log("\nNothing selected.");
+  if (groups.size === 0) console.log("\nNothing selected.");
 }
 
 /** One-line tally, e.g. "2 created · 1 removed · 14 unchanged". */

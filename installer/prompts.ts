@@ -1,7 +1,7 @@
 import { cancel, groupMultiselect, isCancel, log, multiselect, select } from "@clack/prompts";
 import { emptyItems, withRequires, type Catalog, type Item, type Kind, type SkillGroup } from "./catalog.ts";
 import type { Profile, Selection } from "./profiles.ts";
-import { targets, upcomingTargets } from "./targets/registry.ts";
+import { targets } from "./targets/registry.ts";
 import type { Context, Target } from "./targets/types.ts";
 
 /** Unwraps a prompt result, exiting cleanly when the user cancels. */
@@ -44,17 +44,20 @@ export async function promptSelection(
   current: Selection,
   ctx: Context,
 ): Promise<Selection> {
-  const detected = await Promise.all(targets.map(async (t: Target) => [t.id, await t.detect(ctx)] as const));
-  const found = new Set(detected.filter(([, ok]) => ok).map(([id]) => id));
+  const found = new Map(
+    (await Promise.all(targets.map(async (t: Target) => [t.id, await t.detect(ctx)] as const))).flatMap(([id, d]) => (d ? [[id, d] as const] : [])),
+  );
 
   const chosenTargets = answer(
     await multiselect({
       message: "Install for which tools?",
       options: [
-        ...targets.map((t) => ({ value: t.id, label: t.label, hint: found.has(t.id) ? "detected" : "not detected" })),
-        ...upcomingTargets.map((t) => ({ value: t.id, label: t.label, hint: "phase 2", disabled: true })),
+        ...targets.map((t) => {
+          const detection = found.get(t.id);
+          return { value: t.id, label: t.label, hint: detection ? `detected${detection.hint ? ` (${detection.hint})` : ""}` : "not detected" };
+        }),
       ],
-      initialValues: current.targets.length ? current.targets : [...found],
+      initialValues: current.targets.length ? current.targets : [...found.keys()],
       required: true,
     }),
   );

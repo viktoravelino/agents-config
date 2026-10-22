@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { toCodexToml } from "../translate/agent.ts";
 import { detectBinary } from "./detect.ts";
+import { agentsSkills } from "./shared.ts";
 import type { Target } from "./types.ts";
 
 /** Codex custom agents with these names replace a built-in agent. */
@@ -14,7 +15,7 @@ export const codex: Target = {
   scanDirs: ({ home }) => [join(home, ".agents", "skills")],
   install: {
     instructions: (item, { home }) => ({ kind: "symlink", path: join(home, ".codex", "AGENTS.md"), source: item.source }),
-    skills: (item, { home }) => ({ kind: "symlink", path: join(home, ".agents", "skills", item.name), source: item.source }),
+    skills: agentsSkills,
     agents: (item, { home }) => ({
       kind: "file",
       path: join(home, ".codex", "agents", `${item.name}.toml`),

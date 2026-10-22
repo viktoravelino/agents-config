@@ -1,12 +1,15 @@
 # agents-config
 
-Shared instructions, skills and agents for Claude Code and Codex, installed
-from this repository so edits here take effect immediately.
+Shared instructions, skills and agents for Claude Code, Codex, GitHub Copilot
+and IBM Bob, installed from this repository so edits here take effect
+immediately.
 
 ```
-shared/instructions.md     -> ~/.claude/CLAUDE.md, ~/.codex/AGENTS.md
+shared/instructions.md     -> ~/.claude/CLAUDE.md, ~/.codex/AGENTS.md,
+                              ~/.copilot/copilot-instructions.md, ~/.bob/rules/agents-config.md
 shared/skills/<name>/      -> ~/.claude/skills/<name>, ~/.agents/skills/<name>
-shared/agents/<name>.md    -> ~/.claude/agents/<name>.md, and a generated ~/.codex/agents/<name>.toml
+shared/agents/<name>.md    -> ~/.claude/agents/<name>.md, ~/.copilot/agents/<name>.md,
+                              and a generated ~/.codex/agents/<name>.toml
 shared/settings.json       -> ~/.claude/settings.json  (Claude only)
 shared/plugins/mcp/        Claude plugin holding user-wide MCP servers (see below)
 ```
@@ -26,7 +29,8 @@ Flags: `--edit`, `--yes` (skip the confirmation), `--profile <name>`,
 `--dry-run`, `-h/--help`.
 
 The plan lists `+` create, `~` update, `-` remove and `!` conflict per tool;
-unchanged links are only counted. Links are synced: a skill removed here is
+unchanged links are only counted. Links several tools share (see below) are
+listed once under "Shared (...)". Links are synced: a skill removed here is
 unlinked there. Anything the installer does not own is left alone, and real
 files in the way are backed up as `<name>.pre-agents-config-bak` first.
 
@@ -39,6 +43,33 @@ is never touched.
 
 Skills can declare dependencies with `metadata.requires: [other-skill]` in
 their frontmatter; selecting a skill selects what it requires.
+
+### Copilot and Bob
+
+`~/.agents/skills` is read by Codex, Copilot (CLI and VS Code) and Bob (IDE and
+Shell), so skills are linked there once when any of the three is selected and
+unlinked only when none is. Nothing is written to `~/.copilot/skills` or
+`~/.bob/skills`; Bob also reads `~/.claude/skills`, and the first skill of a
+name wins, so a second copy would only duplicate.
+
+- Copilot: instructions and agents are links (Copilot CLI reads the Claude
+  agent frontmatter as is). VS Code reads both `~/.claude/agents` and
+  `~/.copilot/agents` without deduplicating, so when VS Code is installed and
+  agents are selected the installer sets
+  `"chat.agentFilesLocations": {"~/.copilot/agents": false}` in
+  `~/Library/Application Support/Code/User/settings.json`. The file is edited in
+  place (comments and formatting survive), an existing
+  `chat.agentFilesLocations` object is merged into, and the key is removed
+  again only while it still holds that value. A different value you set is
+  reported as a conflict and kept.
+- Bob: instructions are one link, `~/.bob/rules/agents-config.md` (Bob reads
+  every file in that directory; other files there are never touched). Bob gets
+  no agents or settings.
+
+Detection: Copilot is found as a CLI (`copilot` on PATH, ignoring `copilot-shim`
+paths; `/opt/homebrew/bin`, `~/.local/bin`, or a T3 Code install) and/or the
+Copilot extension built into VS Code. Bob is found as a Shell (`bob` on PATH or
+a T3 Code install) and/or the IDE app. The target prompt shows which.
 
 `settings.json` is Claude-only, as Codex has no equivalent. Machine-local
 approvals stay out of it: Claude Code writes those to `settings.local.json`,
@@ -53,7 +84,7 @@ only ask about items that are new in the repo; without a terminal they are
 skipped with a notice.
 
 A profile in `profiles/<name>.json` is a partial selection (tools plus item
-names per kind, or `"all"`). `work-mac` is Claude and Codex with everything;
+names per kind, or `"all"`). `work-mac` is Claude, Codex, Copilot and Bob with everything;
 `headless` is Claude only.
 
 ## MCP servers

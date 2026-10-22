@@ -21,7 +21,7 @@ beforeEach(() => {
   writeFileSync(join(repo, "shared", "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: A\n---\n");
   writeFileSync(join(repo, "shared", "agents", "helper.md"), "---\nname: helper\ndescription: Helps\n---\nHelp.\n");
   mkdirSync(join(root, "home"));
-  ctx = { home: join(root, "home"), repo };
+  ctx = { home: join(root, "home"), repo, root: join(root, "fs"), path: "" };
 });
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
@@ -33,6 +33,8 @@ function run(owned: Owned[], items = everything, selected = ["claude", "codex"])
   const plan = computePlan(desiredArtifacts(catalog, targets, selected, items, ctx), owned, ctx);
   return plan;
 }
+
+const hashOf = (o?: Owned) => (o?.kind === "file" ? o.hash : undefined);
 
 const types = (plan: Plan) => plan.actions.map((a) => a.type);
 
@@ -76,7 +78,7 @@ test("flags an edited generated file and keeps it by default", () => {
   expect(plan.actions).toMatchObject([{ type: "conflict", cause: "edited", resolution: "keep" }]);
   const kept = applyPlan(plan);
   expect(readFileSync(toml, "utf8")).toBe("edited");
-  expect(kept.find((o) => o.path === toml)?.hash).toBe(owned.find((o) => o.path === toml)?.hash);
+  expect(hashOf(kept.find((o) => o.path === toml))).toBe(hashOf(owned.find((o) => o.path === toml)));
 
   const [conflict] = plan.actions;
   if (conflict?.type === "conflict") conflict.resolution = "backup";

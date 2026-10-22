@@ -2,16 +2,20 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { ItemSelection } from "./catalog.ts";
+import type { JsonValue } from "./targets/types.ts";
 
-/** An artifact the installer created or adopted, and may later change or remove. */
-export type Owned = {
-  target: string;
-  path: string;
-  kind: "symlink" | "file";
-  source: string;
-  /** sha256 of the generated content, for `kind: "file"`. */
-  hash?: string;
-};
+/**
+ * An artifact the installer created or adopted, and may later change or
+ * remove. `targets` lists every target that wanted it, since destinations
+ * like ~/.agents/skills are shared.
+ */
+export type Owned = { targets: string[]; path: string } & (
+  | { kind: "symlink"; source: string }
+  /** `hash` is the sha256 of the generated content. */
+  | { kind: "file"; source: string; hash: string }
+  /** One key inside a user-owned JSON file, removed only while it still holds `value`. */
+  | { kind: "json-setting"; keyPath: string[]; value: JsonValue }
+);
 
 export type State = {
   version: 1;
@@ -55,10 +59,21 @@ function isState(value: unknown): value is State {
   );
 }
 
+/** Older state recorded a single `target` per owned artifact. */
+function migrateOwned(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || !("target" in value) || "targets" in value) return value;
+  const { target, ...rest } = value;
+  return { ...rest, targets: [target] };
+}
+
 /** Loads saved state; undefined when absent. Throws on a file it cannot understand. */
 export function loadState(file: string): State | undefined {
   if (!existsSync(file)) return undefined;
-  const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+  const raw: unknown = JSON.parse(readFileSync(file, "utf8"));
+  const parsed =
+    typeof raw === "object" && raw !== null && "owned" in raw && Array.isArray(raw.owned)
+      ? { ...raw, owned: raw.owned.map(migrateOwned) }
+      : raw;
   if (!isState(parsed)) throw new Error(`Unrecognized state file: ${file}`);
   return parsed;
 }

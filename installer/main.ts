@@ -14,8 +14,8 @@ import type { Context } from "./targets/types.ts";
 
 const usage = `Usage: ./install [options]
 
-Links this repo's shared config into Claude Code and Codex, and generates
-Codex agents from the Claude agent files. Prompts on first run; later runs
+Links this repo's shared config into Claude Code, Codex, GitHub Copilot and
+IBM Bob, and generates Codex agents from the Claude agent files. Prompts on first run; later runs
 reuse the saved selection (~/.config/agents-config/state.json).
 
   --edit              change the saved selection
@@ -41,7 +41,12 @@ if (values.help) {
   process.exit(0);
 }
 
-const ctx: Context = { home: process.env.HOME ?? homedir(), repo: resolve(import.meta.dir, "..") };
+const ctx: Context = {
+  home: process.env.HOME ?? homedir(),
+  repo: resolve(import.meta.dir, ".."),
+  root: "/",
+  path: process.env.PATH ?? "",
+};
 const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 const dryRun = values["dry-run"] ?? false;
 const stateFile = statePath(ctx.home);

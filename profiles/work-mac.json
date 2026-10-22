@@ -1,5 +1,5 @@
 {
-  "targets": ["claude", "codex"],
+  "targets": ["claude", "codex", "copilot", "bob"],
   "items": {
     "instructions": "all",
     "skills": "all",
