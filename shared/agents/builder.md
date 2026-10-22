@@ -1,5 +1,5 @@
 ---
-name: worker
+name: builder
 description: Well-specified implementation work that spans several files, where the brief says what to build and how to check it. Use it for features, fixes and migrations whose design is already settled.
 model: sonnet
 effort: medium
