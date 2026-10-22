@@ -21,12 +21,12 @@ beforeEach(() => {
   writeFileSync(join(repo, "shared", "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: A\n---\n");
   writeFileSync(join(repo, "shared", "agents", "helper.md"), "---\nname: helper\ndescription: Helps\n---\nHelp.\n");
   mkdirSync(join(root, "home"));
-  ctx = { home: join(root, "home"), repo, root: join(root, "fs"), path: "" };
+  ctx = { home: join(root, "home"), repo, root: join(root, "fs"), path: "", run: () => ({ code: 127, stdout: "", stderr: "" }) };
 });
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-const everything: ItemSelection = { instructions: ["instructions"], skills: ["alpha"], agents: ["helper"], settings: [] };
+const everything: ItemSelection = { instructions: ["instructions"], skills: ["alpha"], agents: ["helper"], settings: [], mcp: [] };
 
 function run(owned: Owned[], items = everything, selected = ["claude", "codex"]) {
   const catalog = discoverCatalog(ctx.repo);
@@ -103,7 +103,7 @@ test("adopts links made by install.sh and leaves foreign entries alone", () => {
     join(ctx.home, ".claude", "skills", "gone"),
   ]);
   const selection = selectionFromOwned(catalog, targets, adopted, ctx);
-  expect(selection).toEqual({ targets: ["claude"], items: { instructions: [], skills: ["alpha"], agents: [], settings: [] } });
+  expect(selection).toEqual({ targets: ["claude"], items: { instructions: [], skills: ["alpha"], agents: [], settings: [], mcp: [] } });
 
   const plan = run(adopted, selection.items, selection.targets);
   expect(plan.actions).toMatchObject([{ type: "remove", reason: "source gone" }]);

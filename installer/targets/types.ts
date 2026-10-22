@@ -1,3 +1,4 @@
+import type { PluginRef, Runner } from "../cli-plugin.ts";
 import type { Item, ItemOf, ItemSelection, Kind } from "../catalog.ts";
 
 /**
@@ -5,7 +6,7 @@ import type { Item, ItemOf, ItemSelection, Kind } from "../catalog.ts";
  * `home` at a temp dir, `root` at a fake filesystem root (for /Applications,
  * /opt/homebrew) and `path` at a dir of fake binaries.
  */
-export type Context = { home: string; repo: string; root: string; path: string };
+export type Context = { home: string; repo: string; root: string; path: string; run: Runner };
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
@@ -20,6 +21,8 @@ export type Artifact = {
   | { kind: "symlink"; source: string }
   | { kind: "file"; source: string; content: string }
   | { kind: "json-setting"; keyPath: string[]; value: JsonValue }
+  /** A plugin the CLI installs itself. `hash` covers the plugin content; `copied` says whether the CLI keeps its own copy. */
+  | ({ kind: "cli-plugin"; hash: string; copied: boolean } & PluginRef)
 );
 
 /** An artifact plus every selected target that wants it (shared destinations list several). */
@@ -61,6 +64,10 @@ export function artifactFor(target: Target, item: Item, ctx: Context): Artifact 
     }
     case "agents": {
       const install = target.install.agents;
+      return install && install(item, ctx);
+    }
+    case "mcp": {
+      const install = target.install.mcp;
       return install && install(item, ctx);
     }
   }

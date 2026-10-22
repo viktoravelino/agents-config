@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import { appInstalled, appPath, binaryVersion, detectionOf, findBinary } from "./detect.ts";
-import { agentsSkills } from "./shared.ts";
+import { agentsSkills, mcpPluginFor } from "./shared.ts";
 import type { Context, Target } from "./types.ts";
 
 const vscodeApp = "Visual Studio Code.app";
@@ -41,6 +41,7 @@ export const copilot: Target = {
   install: {
     instructions: (item, { home }) => ({ kind: "symlink", path: join(home, ".copilot", "copilot-instructions.md"), source: item.source }),
     skills: agentsSkills,
+    mcp: mcpPluginFor("copilot"),
     agents: (item, { home }) => ({ kind: "symlink", path: join(home, ".copilot", "agents", basename(item.source)), source: item.source }),
   },
   extras: (items, ctx) =>

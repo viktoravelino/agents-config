@@ -4,6 +4,7 @@
     "instructions": "all",
     "skills": "all",
     "agents": "all",
-    "settings": "all"
+    "settings": "all",
+    "mcp": "all"
   }
 }

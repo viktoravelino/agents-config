@@ -2,6 +2,7 @@ import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { emptyItems, type Catalog, type ItemSelection } from "./catalog.ts";
+import { pluginActive } from "./cli-plugin.ts";
 import { readSetting } from "./json-setting.ts";
 import { sha256, type Owned } from "./state.ts";
 import { artifactFor, type Artifact, type Context, type Desired, type Target } from "./targets/types.ts";
@@ -35,6 +36,11 @@ export type Plan = {
   unchanged: Desired[];
 };
 
+/** Identity of an artifact: its path, plus the key for a setting inside a shared JSON file. */
+function keyOf(a: { path: string; kind: string; keyPath?: string[] }): string {
+  return a.kind === "json-setting" && a.keyPath ? `${a.path}#${a.keyPath.join("\0")}` : a.path;
+}
+
 /**
  * Every artifact the selected targets want for the selected items. Targets
  * that want the same path (e.g. ~/.agents/skills/<name>) share one artifact.
@@ -48,8 +54,8 @@ export function desiredArtifacts(
 ): Desired[] {
   const byPath = new Map<string, Desired>();
   const add = (artifact: Artifact, id: string) => {
-    const existing = byPath.get(artifact.path);
-    if (!existing) byPath.set(artifact.path, { ...artifact, targets: [id] });
+    const existing = byPath.get(keyOf(artifact));
+    if (!existing) byPath.set(keyOf(artifact), { ...artifact, targets: [id] });
     else if (!existing.targets.includes(id)) existing.targets.push(id);
   };
   for (const target of targetList) {
@@ -74,14 +80,22 @@ function lstat(path: string) {
 
 /** Compares desired artifacts with the disk and the owned records; touches nothing. */
 export function computePlan(desired: Desired[], owned: Owned[], ctx: Context): Plan {
-  const ownedByPath = new Map(owned.map((o) => [o.path, o]));
-  const wanted = new Set(desired.map((d) => d.path));
+  const ownedByPath = new Map(owned.map((o) => [keyOf(o), o]));
+  const wanted = new Set(desired.map(keyOf));
   const actions: Action[] = [];
   const unchanged: Desired[] = [];
 
   for (const d of desired) {
+    if (d.kind === "cli-plugin") {
+      const record = ownedByPath.get(keyOf(d));
+      if (!pluginActive(d, ctx.run)) actions.push({ type: "create", desired: d });
+      // A live plugin follows the checkout; only a copied one goes stale.
+      else if (!d.copied || (record?.kind === "cli-plugin" && record.hash === d.hash)) unchanged.push(d);
+      else actions.push({ type: "update", desired: d });
+      continue;
+    }
     const stat = lstat(d.path);
-    const record = ownedByPath.get(d.path);
+    const record = ownedByPath.get(keyOf(d));
     if (d.kind === "json-setting") {
       const current = stat ? readSetting(d.path, d.keyPath) : undefined;
       if (current === undefined) actions.push({ type: "create", desired: d });
@@ -116,7 +130,12 @@ export function computePlan(desired: Desired[], owned: Owned[], ctx: Context): P
   }
 
   for (const o of owned) {
-    if (wanted.has(o.path)) continue;
+    if (wanted.has(keyOf(o))) continue;
+    if (o.kind === "cli-plugin") {
+      // Already gone or disabled by hand: nothing left for us to remove.
+      if (pluginActive(o, ctx.run)) actions.push({ type: "remove", owned: o, reason: "deselected" });
+      continue;
+    }
     const stat = lstat(o.path);
     if (!stat) continue;
     switch (o.kind) {

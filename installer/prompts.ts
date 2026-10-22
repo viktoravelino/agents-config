@@ -107,6 +107,18 @@ export async function promptSelection(
     );
   }
 
+  const servers = catalog.filter((i) => i.kind === "mcp");
+  if (servers.length && supported.has("mcp")) {
+    items.mcp = answer(
+      await multiselect({
+        message: "MCP servers (Claude gets all of them from its settings; Codex and Copilot install the whole plugin)",
+        options: servers.map((i) => ({ value: i.name, label: i.name, hint: short(i.description) })),
+        initialValues: current.items.mcp.filter((n) => servers.some((s) => s.name === n)),
+        required: false,
+      }),
+    );
+  }
+
   const { names, via } = withRequires(catalog, items.skills);
   for (const [name, parent] of via) log.info(`Added ${name} (via ${parent})`);
   items.skills = names;

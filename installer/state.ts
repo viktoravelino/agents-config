@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { ItemSelection } from "./catalog.ts";
+import type { PluginRef } from "./cli-plugin.ts";
+import { emptyItems, type ItemSelection } from "./catalog.ts";
 import type { JsonValue } from "./targets/types.ts";
 
 /**
@@ -15,6 +16,8 @@ export type Owned = { targets: string[]; path: string } & (
   | { kind: "file"; source: string; hash: string }
   /** One key inside a user-owned JSON file, removed only while it still holds `value`. */
   | { kind: "json-setting"; keyPath: string[]; value: JsonValue }
+  /** A plugin installed through a CLI; `hash` is the plugin content it was installed from. */
+  | ({ kind: "cli-plugin"; hash: string } & PluginRef)
 );
 
 export type State = {
@@ -42,9 +45,7 @@ function isStringList(value: unknown): value is string[] {
 
 function isItemSelection(value: unknown): value is ItemSelection {
   if (typeof value !== "object" || value === null) return false;
-  return (["instructions", "skills", "agents", "settings"] as const).every(
-    (kind) => kind in value && isStringList((value as Record<string, unknown>)[kind]),
-  );
+  return Object.values(value).every(isStringList);
 }
 
 function isState(value: unknown): value is State {
@@ -66,13 +67,23 @@ function migrateOwned(value: unknown): unknown {
   return { ...rest, targets: [target] };
 }
 
+/** Older state predates some kinds; treat them as empty. */
+function fillKinds(value: unknown): unknown {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? { ...emptyItems(), ...value } : value;
+}
+
 /** Loads saved state; undefined when absent. Throws on a file it cannot understand. */
 export function loadState(file: string): State | undefined {
   if (!existsSync(file)) return undefined;
   const raw: unknown = JSON.parse(readFileSync(file, "utf8"));
   const parsed =
     typeof raw === "object" && raw !== null && "owned" in raw && Array.isArray(raw.owned)
-      ? { ...raw, owned: raw.owned.map(migrateOwned) }
+      ? {
+          ...raw,
+          owned: raw.owned.map(migrateOwned),
+          ...("items" in raw && { items: fillKinds(raw.items) }),
+          ...("known" in raw && { known: fillKinds(raw.known) }),
+        }
       : raw;
   if (!isState(parsed)) throw new Error(`Unrecognized state file: ${file}`);
   return parsed;

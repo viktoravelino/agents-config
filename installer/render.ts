@@ -15,6 +15,11 @@ export function viaBySource(catalog: Catalog, via: Map<string, string>): Map<str
   );
 }
 
+/** Display name of an artifact; a setting inside a shared JSON file also names its key. */
+function labelOf(a: { path: string; kind: string; keyPath?: string[] }, home: string): string {
+  return displayPath(a.path, home) + (a.kind === "json-setting" && a.keyPath ? ` [${a.keyPath.join(".")}]` : "");
+}
+
 function line(action: Action, home: string, via: Map<string, string>): string {
   switch (action.type) {
     case "create":
@@ -22,13 +27,13 @@ function line(action: Action, home: string, via: Map<string, string>): string {
       const { desired } = action;
       const notes = [
         desired.note,
-        desired.kind !== "json-setting" && via.has(desired.source) ? `via ${via.get(desired.source)}` : undefined,
+        "source" in desired && via.has(desired.source) ? `via ${via.get(desired.source)}` : undefined,
       ].filter(Boolean);
       const glyph = action.type === "create" ? paint("green", "+") : paint("yellow", "~");
-      return `${glyph} ${displayPath(desired.path, home)}${notes.length ? paint("dim", `  (${notes.join("; ")})`) : ""}`;
+      return `${glyph} ${labelOf(desired, home)}${notes.length ? paint("dim", `  (${notes.join("; ")})`) : ""}`;
     }
     case "remove":
-      return `${paint("red", "-")} ${displayPath(action.owned.path, home)}${paint("dim", `  (${action.reason})`)}`;
+      return `${paint("red", "-")} ${labelOf(action.owned, home)}${paint("dim", `  (${action.reason})`)}`;
     case "conflict": {
       const setting = action.desired?.kind === "json-setting";
       const what =

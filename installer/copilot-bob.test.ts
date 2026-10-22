@@ -25,13 +25,13 @@ beforeEach(() => {
   writeFileSync(join(repo, "shared", "agents", "helper.md"), "---\nname: helper\ndescription: Helps\n---\nHelp.\n");
   mkdirSync(join(root, "home"));
   mkdirSync(join(root, "bin"));
-  ctx = { home: join(root, "home"), repo, root: join(root, "fs"), path: join(root, "bin") };
+  ctx = { home: join(root, "home"), repo, root: join(root, "fs"), path: join(root, "bin"), run: () => ({ code: 127, stdout: "", stderr: "" }) };
   settings = join(ctx.home, "Library", "Application Support", "Code", "User", "settings.json");
 });
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-const everything: ItemSelection = { instructions: ["instructions"], skills: ["alpha"], agents: ["helper"], settings: [] };
+const everything: ItemSelection = { instructions: ["instructions"], skills: ["alpha"], agents: ["helper"], settings: [], mcp: [] };
 
 function run(owned: Owned[], selected: string[], items = everything) {
   return computePlan(desiredArtifacts(discoverCatalog(ctx.repo), targets, selected, items, ctx), owned, ctx);

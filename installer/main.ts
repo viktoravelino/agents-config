@@ -2,20 +2,22 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { intro, log, outro } from "@clack/prompts";
-import { applyPlan } from "./apply.ts";
+import { ApplyError, applyPlan } from "./apply.ts";
+import { spawnRunner } from "./cli-plugin.ts";
 import { discoverCatalog, emptyItems, kinds, withRequires, type Catalog, type Item } from "./catalog.ts";
 import { adoptExisting, computePlan, desiredArtifacts, displayPath, selectionFromOwned, type Plan } from "./plan.ts";
 import { loadProfiles, mergeSelections, profileSelection, type Selection } from "./profiles.ts";
 import { promptConfirm, promptEdited, promptNewItems, promptProfile, promptSelection } from "./prompts.ts";
 import { renderPlan, summarize, viaBySource } from "./render.ts";
-import { loadState, saveState, statePath, type State } from "./state.ts";
+import { loadState, saveState, statePath, type Owned, type State } from "./state.ts";
 import { targets } from "./targets/registry.ts";
 import type { Context } from "./targets/types.ts";
 
 const usage = `Usage: ./install [options]
 
 Links this repo's shared config into Claude Code, Codex, GitHub Copilot and
-IBM Bob, and generates Codex agents from the Claude agent files. Prompts on first run; later runs
+IBM Bob, generates Codex agents from the Claude agent files, and installs the
+user-wide MCP servers (plugin for Codex and Copilot, ~/.bob/settings/mcp.json for Bob). Prompts on first run; later runs
 reuse the saved selection (~/.config/agents-config/state.json).
 
   --edit              change the saved selection
@@ -46,6 +48,7 @@ const ctx: Context = {
   repo: resolve(import.meta.dir, ".."),
   root: "/",
   path: process.env.PATH ?? "",
+  run: spawnRunner,
 };
 const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 const dryRun = values["dry-run"] ?? false;
@@ -151,7 +154,15 @@ if (interactive) {
   }
 }
 
-const nextOwned = applyPlan(plan);
+let nextOwned: Owned[];
+let failures: string[] = [];
+try {
+  nextOwned = applyPlan(plan, ctx.run);
+} catch (error) {
+  if (!(error instanceof ApplyError)) throw error;
+  nextOwned = error.owned;
+  failures = error.failures;
+}
 saveState(stateFile, {
   version: 1,
   profile: chosen.profile,
@@ -160,4 +171,6 @@ saveState(stateFile, {
   known: chosen.known,
   owned: nextOwned,
 });
+for (const failure of failures) log.error(failure);
+if (failures.length) fail(`${failures.length} step(s) failed; the rest was applied and saved`);
 outro(`Done: ${summarize(plan)}`);

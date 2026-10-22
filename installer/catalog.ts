@@ -1,9 +1,10 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseFrontmatter, str, strList } from "./frontmatter.ts";
+import { parseMcpServers, describeMcpServer, type McpServer } from "./translate/mcp.ts";
 import { parseAgent, type AgentDefinition } from "./translate/agent.ts";
 
-export const kinds = ["instructions", "skills", "agents", "settings"] as const;
+export const kinds = ["instructions", "skills", "agents", "settings", "mcp"] as const;
 export type Kind = (typeof kinds)[number];
 
 export type SkillGroup = "Workflows" | "Helpers" | "Project profiles";
@@ -15,7 +16,8 @@ export type Item =
   | (Base & { kind: "instructions" })
   | (Base & { kind: "settings" })
   | (Base & { kind: "skills"; group: SkillGroup; requires: string[] })
-  | (Base & { kind: "agents"; definition: AgentDefinition });
+  | (Base & { kind: "agents"; definition: AgentDefinition })
+  | (Base & { kind: "mcp"; server: McpServer });
 
 export type ItemOf<K extends Kind> = Extract<Item, { kind: K }>;
 
@@ -68,6 +70,13 @@ export function discoverCatalog(repo: string): Catalog {
     if (definition) items.push({ kind: "agents", name: definition.name, description: definition.description, source, definition });
   }
 
+  const mcpFile = join(shared, "plugins", "mcp", ".mcp.json");
+  if (existsSync(mcpFile)) {
+    for (const [name, server] of Object.entries(parseMcpServers(readFileSync(mcpFile, "utf8")))) {
+      items.push({ kind: "mcp", name, description: describeMcpServer(server), source: mcpFile, server });
+    }
+  }
+
   return items;
 }
 
@@ -77,7 +86,7 @@ function listDir(dir: string): string[] {
 
 /** An empty selection, for building one up kind by kind. */
 export function emptyItems(): ItemSelection {
-  return { instructions: [], skills: [], agents: [], settings: [] };
+  return { instructions: [], skills: [], agents: [], settings: [], mcp: [] };
 }
 
 /**

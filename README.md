@@ -11,7 +11,8 @@ shared/skills/<name>/      -> ~/.claude/skills/<name>, ~/.agents/skills/<name>
 shared/agents/<name>.md    -> ~/.claude/agents/<name>.md, ~/.copilot/agents/<name>.md,
                               and a generated ~/.codex/agents/<name>.toml
 shared/settings.json       -> ~/.claude/settings.json  (Claude only)
-shared/plugins/mcp/        Claude plugin holding user-wide MCP servers (see below)
+shared/plugins/mcp/        Claude plugin holding user-wide MCP servers; also installed as a
+                              plugin in Codex and Copilot, and merged into ~/.bob/settings/mcp.json
 ```
 
 ## Install
@@ -63,8 +64,9 @@ name wins, so a second copy would only duplicate.
   again only while it still holds that value. A different value you set is
   reported as a conflict and kept.
 - Bob: instructions are one link, `~/.bob/rules/agents-config.md` (Bob reads
-  every file in that directory; other files there are never touched). Bob gets
-  no agents or settings.
+  every file in that directory; other files there are never touched). MCP
+  servers go into `~/.bob/settings/mcp.json` (see below). Bob gets no agents or
+  settings.
 
 Detection: Copilot is found as a CLI (`copilot` on PATH, ignoring `copilot-shim`
 paths; `/opt/homebrew/bin`, `~/.local/bin`, or a T3 Code install) and/or the
@@ -84,20 +86,31 @@ only ask about items that are new in the repo; without a terminal they are
 skipped with a notice.
 
 A profile in `profiles/<name>.json` is a partial selection (tools plus item
-names per kind, or `"all"`). `work-mac` is Claude, Codex, Copilot and Bob with everything;
+names per kind, or `"all"`). `work-mac` is Claude, Codex, Copilot and Bob with everything (MCP servers included);
 `headless` is Claude only.
 
 ## MCP servers
 
 User-wide MCP servers live in `shared/plugins/mcp/.mcp.json`, not in
-`~/.claude.json` (Claude Code rewrites that file constantly). The repo root is a
-local plugin marketplace (`.claude-plugin/marketplace.json`), and
-`shared/settings.json` registers it under `extraKnownMarketplaces` and enables
-`mcp@agents-config`. Claude reads the plugin straight from this checkout, so an
-edit applies on the next session or after `/reload-plugins`. Servers show up as
-`plugin:mcp:<name>`; OAuth ones authenticate once through `/mcp`.
+`~/.claude.json` (Claude Code rewrites that file constantly). Each server is an
+`mcp` item in the installer; the OAuth ones authenticate once per tool.
 
-The marketplace path is absolute, so the repo must live at
+| Tool | How the servers arrive |
+| --- | --- |
+| Claude | Settings kind: the repo root is a local marketplace (`.claude-plugin/marketplace.json`) that `shared/settings.json` registers and enables as `mcp@agents-config`. Read straight from the checkout; servers show up as `plugin:mcp:<name>`. Not a separate step, so `mcp` is not offered for Claude alone. |
+| Codex | `codex plugin marketplace add <checkout>` then `codex plugin add mcp@agents-config`. Codex copies the plugin into `$CODEX_HOME/plugins/cache`, so the installer reinstalls it when the plugin content hash changes (`~` in the plan). `codex mcp list` shows the servers. |
+| Copilot CLI | `copilot plugin marketplace add <checkout>` then `copilot plugin install mcp@agents-config`. Copilot reads the plugin live from the checkout (no copy, no reinstall). `copilot mcp list` shows them under "Plugin servers". |
+| Bob | Each server is merged into `~/.bob/settings/mcp.json` under `mcpServers.<name>` (owned per key; your other servers there are never touched). `type: "http"` becomes `streamable-http`, `${VAR}` becomes `${env:VAR}`, stdio entries pass through. |
+
+Codex and Copilot write their own config; the installer never edits it and
+honors `CODEX_HOME` / `COPILOT_HOME` because it just runs the CLIs. The plugin
+is all-or-nothing there: selecting any server installs the whole plugin, while
+Bob follows the per-server selection. Deselecting everything uninstalls the
+plugin and drops the `agents-config` marketplace registration. If a CLI is
+missing, or that marketplace name already points elsewhere, the step fails
+loudly after the rest of the plan is applied and saved.
+
+The Claude marketplace path is absolute, so the repo must live at
 `~/projects/agents-config` on every machine. `claude plugin` commands rewrite
 `settings.json`; check `git diff` after running one.
 
