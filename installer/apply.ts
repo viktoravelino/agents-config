@@ -74,7 +74,7 @@ export class ApplyError extends Error {
  * plan; it is reported by throwing an ApplyError at the end.
  */
 export function applyPlan(plan: Plan, run: Runner = spawnRunner): Owned[] {
-  const owned = plan.unchanged.map(toOwned);
+  const owned = [...plan.unchanged.map(toOwned), ...plan.kept];
   const failures: string[] = [];
   /** Failures are collected so the other artifacts still land. */
   const attempt = (label: string, fn: () => void): boolean => {

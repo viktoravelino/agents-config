@@ -2,7 +2,7 @@ import { cancel, groupMultiselect, isCancel, log, multiselect, select } from "@c
 import { emptyItems, withRequires, type Catalog, type Item, type Kind, type SkillGroup } from "./catalog.ts";
 import type { Profile, Selection } from "./profiles.ts";
 import { targets } from "./targets/registry.ts";
-import type { Context, Target } from "./targets/types.ts";
+import type { Context, Detection, Target } from "./targets/types.ts";
 
 /** Unwraps a prompt result, exiting cleanly when the user cancels. */
 function answer<T>(value: T): Exclude<T, symbol> {
@@ -38,6 +38,28 @@ export async function promptProfile(profiles: Record<string, Profile>): Promise<
   return choice || undefined;
 }
 
+/**
+ * Options for the target prompt. Only detected tools can be picked; the rest
+ * are listed disabled, and never preselected.
+ */
+export function targetChoices(
+  targetList: Pick<Target, "id" | "label">[],
+  found: ReadonlyMap<string, Detection>,
+  current: string[],
+) {
+  const detectedIds = targetList.filter((t) => found.has(t.id)).map((t) => t.id);
+  const saved = current.filter((id) => found.has(id));
+  return {
+    options: targetList.map((t) => {
+      const detection = found.get(t.id);
+      return detection
+        ? { value: t.id, label: t.label, hint: `detected${detection.hint ? ` (${detection.hint})` : ""}` }
+        : { value: t.id, label: t.label, hint: "not found", disabled: true };
+    }),
+    initialValues: saved.length ? saved : detectedIds,
+  };
+}
+
 /** Walks the target and item prompts, preselecting `current`. */
 export async function promptSelection(
   catalog: Catalog,
@@ -48,20 +70,20 @@ export async function promptSelection(
     (await Promise.all(targets.map(async (t: Target) => [t.id, await t.detect(ctx)] as const))).flatMap(([id, d]) => (d ? [[id, d] as const] : [])),
   );
 
-  const chosenTargets = answer(
+  if (found.size === 0) {
+    cancel("None of the supported tools were found.");
+    process.exit(1);
+  }
+  const picked = answer(
     await multiselect({
       message: "Install for which tools?",
-      options: [
-        ...targets.map((t) => {
-          const detection = found.get(t.id);
-          return { value: t.id, label: t.label, hint: detection ? `detected${detection.hint ? ` (${detection.hint})` : ""}` : "not detected" };
-        }),
-      ],
-      initialValues: current.targets.length ? current.targets : [...found.keys()],
+      ...targetChoices(targets, found, current.targets),
       required: true,
     }),
   );
-  const supported = supportedKinds(chosenTargets);
+  // A saved tool that is not installed right now stays selected, so it returns when it is.
+  const chosenTargets = [...picked, ...current.targets.filter((id) => !found.has(id) && !picked.includes(id))];
+  const supported = supportedKinds(picked);
   const items = emptyItems();
 
   const core = catalog.filter((i) => (i.kind === "instructions" || i.kind === "settings") && supported.has(i.kind));

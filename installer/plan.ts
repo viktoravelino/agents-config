@@ -34,7 +34,50 @@ export type Plan = {
   actions: Action[];
   /** Desired artifacts already in place. */
   unchanged: Desired[];
+  /** Owned artifacts left alone because their tool is missing; they stay recorded as owned. */
+  kept: Owned[];
 };
+
+export type Wanted = {
+  desired: Desired[];
+  /** Keys of artifacts wanted by the selection but not plannable now (tool or CLI missing). */
+  held: Set<string>;
+  /** One line per skipped target or artifact. */
+  notices: string[];
+};
+
+/**
+ * Splits what the selection wants into what can be planned and what is held
+ * back. A target that is not detected plans nothing, and an artifact that
+ * needs a runnable CLI is held while the CLI does not answer. Shared
+ * artifacts are planned as long as one detected target wants them.
+ */
+export function wantedArtifacts(
+  catalog: Catalog,
+  targetList: Target[],
+  selectedTargets: string[],
+  items: ItemSelection,
+  ctx: Context,
+  detected: ReadonlySet<string>,
+): Wanted {
+  const desired: Desired[] = [];
+  const held = new Set<string>();
+  const notices = targetList.filter((t) => selectedTargets.includes(t.id) && !detected.has(t.id)).map((t) => `Skipped ${t.label}: not found`);
+  const runnable = new Map<string, boolean>();
+  const cliRuns = (cli: string) => {
+    if (!runnable.has(cli)) runnable.set(cli, ctx.run(cli, ["--version"]).code === 0);
+    return runnable.get(cli)!;
+  };
+  for (const d of desiredArtifacts(catalog, targetList, selectedTargets, items, ctx)) {
+    const live = d.targets.filter((id) => detected.has(id));
+    if (live.length === 0) held.add(keyOf(d));
+    else if (d.kind === "cli-plugin" && !cliRuns(d.cli)) {
+      held.add(keyOf(d));
+      notices.push(`Skipped ${d.path}: \`${d.cli}\` is not runnable`);
+    } else desired.push({ ...d, targets: live });
+  }
+  return { desired, held, notices };
+}
 
 /** Identity of an artifact: its path, plus the key for a setting inside a shared JSON file. */
 function keyOf(a: { path: string; kind: string; keyPath?: string[] }): string {
@@ -79,11 +122,12 @@ function lstat(path: string) {
 }
 
 /** Compares desired artifacts with the disk and the owned records; touches nothing. */
-export function computePlan(desired: Desired[], owned: Owned[], ctx: Context): Plan {
+export function computePlan(desired: Desired[], owned: Owned[], ctx: Context, held: ReadonlySet<string> = new Set()): Plan {
   const ownedByPath = new Map(owned.map((o) => [keyOf(o), o]));
   const wanted = new Set(desired.map(keyOf));
   const actions: Action[] = [];
   const unchanged: Desired[] = [];
+  const kept: Owned[] = [];
 
   for (const d of desired) {
     if (d.kind === "cli-plugin") {
@@ -131,6 +175,11 @@ export function computePlan(desired: Desired[], owned: Owned[], ctx: Context): P
 
   for (const o of owned) {
     if (wanted.has(keyOf(o))) continue;
+    // A missing tool is not a deselection: keep what we own for it.
+    if (held.has(keyOf(o))) {
+      kept.push(o);
+      continue;
+    }
     if (o.kind === "cli-plugin") {
       // Already gone or disabled by hand: nothing left for us to remove.
       if (pluginActive(o, ctx.run)) actions.push({ type: "remove", owned: o, reason: "deselected" });
@@ -160,7 +209,7 @@ export function computePlan(desired: Desired[], owned: Owned[], ctx: Context): P
     }
   }
 
-  return { actions, unchanged };
+  return { actions, unchanged, kept };
 }
 
 function stillHolds(path: string, keyPath: string[], value: unknown): boolean {

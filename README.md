@@ -77,6 +77,16 @@ a T3 Code install) and/or the IDE app. The target prompt shows which.
 approvals stay out of it: Claude Code writes those to `settings.local.json`,
 which this repo does not manage.
 
+### Missing tools
+
+Only detected tools are selectable in the prompt (the rest show "not found",
+disabled). A saved selection or profile may still name a tool that is not
+installed: it stays in the saved selection, nothing is planned for it, a
+"Skipped <tool>: not found" line is printed, and what the installer already
+owns for it is left alone. Shared links such as `~/.agents/skills/<name>` are
+planned while any detected tool wants them. Non-interactive runs follow the
+same rules.
+
 ### State and profiles
 
 The selection and the list of artifacts the installer owns live in
@@ -106,9 +116,10 @@ Codex and Copilot write their own config; the installer never edits it and
 honors `CODEX_HOME` / `COPILOT_HOME` because it just runs the CLIs. The plugin
 is all-or-nothing there: selecting any server installs the whole plugin, while
 Bob follows the per-server selection. Deselecting everything uninstalls the
-plugin and drops the `agents-config` marketplace registration. If a CLI is
-missing, or that marketplace name already points elsewhere, the step fails
-loudly after the rest of the plan is applied and saved.
+plugin and drops the `agents-config` marketplace registration. If the CLI is
+not runnable the plugin step is skipped with a notice (links and file merges
+still apply); if the `agents-config` marketplace name already points elsewhere,
+the step fails after the rest of the plan is applied and saved.
 
 The Claude marketplace path is absolute, so the repo must live at
 `~/projects/agents-config` on every machine. `claude plugin` commands rewrite

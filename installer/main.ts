@@ -5,7 +5,7 @@ import { intro, log, outro } from "@clack/prompts";
 import { ApplyError, applyPlan } from "./apply.ts";
 import { spawnRunner } from "./cli-plugin.ts";
 import { discoverCatalog, emptyItems, kinds, withRequires, type Catalog, type Item } from "./catalog.ts";
-import { adoptExisting, computePlan, desiredArtifacts, displayPath, selectionFromOwned, type Plan } from "./plan.ts";
+import { adoptExisting, computePlan, displayPath, selectionFromOwned, wantedArtifacts, type Plan } from "./plan.ts";
 import { loadProfiles, mergeSelections, profileSelection, type Selection } from "./profiles.ts";
 import { promptConfirm, promptEdited, promptNewItems, promptProfile, promptSelection } from "./prompts.ts";
 import { renderPlan, summarize, viaBySource } from "./render.ts";
@@ -67,6 +67,11 @@ function newItems(catalog: Catalog, state: State): Item[] {
   return catalog.filter((i) => !state.known[i.kind].includes(i.name) && installable.has(i.kind));
 }
 
+/** Targets whose tool is installed here; the others are skipped, never removed. */
+const detected = new Set(
+  (await Promise.all(targets.map(async (t) => ((await t.detect(ctx)) ? t.id : undefined)))).filter((id): id is string => id !== undefined),
+);
+
 const catalog = discoverCatalog(ctx.repo);
 const state = loadState(stateFile);
 const profiles = loadProfiles(ctx.repo);
@@ -116,11 +121,11 @@ async function chooseSelection(): Promise<{ selection: Selection; known: State["
   return { selection, known: all, profile: profileName };
 }
 
-function buildPlan(selection: Selection): { plan: Plan; via: Map<string, string> } {
+function buildPlan(selection: Selection): { plan: Plan; via: Map<string, string>; notices: string[] } {
   const { names, via } = withRequires(catalog, selection.items.skills);
   const items = { ...selection.items, skills: names };
-  const desired = desiredArtifacts(catalog, targets, selection.targets, items, ctx);
-  return { plan: computePlan(desired, owned, ctx), via: viaBySource(catalog, via) };
+  const { desired, held, notices } = wantedArtifacts(catalog, targets, selection.targets, items, ctx, detected);
+  return { plan: computePlan(desired, owned, ctx, held), via: viaBySource(catalog, via), notices };
 }
 
 intro("agents-config");
@@ -131,6 +136,7 @@ for (;;) {
   const built = buildPlan(chosen.selection);
   plan = built.plan;
   renderPlan(plan, labels, ctx.home, built.via);
+  for (const notice of built.notices) log.warn(notice);
   if (dryRun || !interactive || values.yes) break;
   const answer = await promptConfirm();
   if (answer === "cancel") {

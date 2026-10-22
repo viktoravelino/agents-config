@@ -23,6 +23,7 @@ const fakeRun: Runner = (command, args) => {
   calls.push(`${command} ${args.join(" ")}`);
   const ok = (stdout = "") => ({ code: 0, stdout, stderr: "" });
   if (command !== "codex") return { code: 127, stdout: "", stderr: "not found" };
+  if (args[0] === "--version") return ok("codex 0.0.0");
   const [group, verb, arg] = args;
   if (group !== "plugin") return { code: 1, stdout: "", stderr: "unexpected" };
   if (verb === "list") return ok(JSON.stringify({ installed: [...codexInstalled].map((pluginId) => ({ pluginId, enabled: true })), available: [] }));
