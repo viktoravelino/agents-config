@@ -1,6 +1,6 @@
 import { cancel, groupMultiselect, isCancel, log, multiselect, select } from "@clack/prompts";
 import { emptyItems, withRequires, type Catalog, type Item, type Kind, type SkillGroup } from "./catalog.ts";
-import type { Profile, Selection } from "./profiles.ts";
+import { suggestProfile, type Profile, type Selection } from "./profiles.ts";
 import { targets } from "./targets/registry.ts";
 import type { Context, Detection, Target } from "./targets/types.ts";
 
@@ -23,16 +23,25 @@ function supportedKinds(chosen: string[]): Set<Kind> {
 }
 
 /** First-run profile choice; undefined means "custom". */
-export async function promptProfile(profiles: Record<string, Profile>): Promise<string | undefined> {
+export async function promptProfile(
+  profiles: Record<string, Profile>,
+  detectedTargetIds: ReadonlySet<string>,
+): Promise<string | undefined> {
   const names = Object.keys(profiles);
   if (names.length === 0) return undefined;
+  const suggested = suggestProfile(profiles, detectedTargetIds);
   const choice = answer(
     await select({
       message: "Start from a profile?",
       options: [
-        ...names.map((name) => ({ value: name, label: name })),
+        ...names.map((name) => ({
+          value: name,
+          label: name,
+          hint: name === suggested ? "matches the tools found here" : undefined,
+        })),
         { value: "", label: "none", hint: "choose everything by hand" },
       ],
+      initialValue: suggested,
     }),
   );
   return choice || undefined;

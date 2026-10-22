@@ -43,3 +43,20 @@ export function mergeSelections(a: Selection, b: Selection): Selection {
   for (const kind of kinds) items[kind] = union(a.items[kind], b.items[kind]);
   return { targets: union(a.targets, b.targets), items };
 }
+
+/**
+ * Picks the profile that best fits the detected tools. Score is detected
+ * targets minus missing targets. Ties go to more detected targets, then to
+ * the first name alphabetically.
+ */
+export function suggestProfile(
+  profiles: Record<string, Profile>,
+  detectedTargetIds: ReadonlySet<string>,
+): string | undefined {
+  const ranked = Object.entries(profiles).map(([name, profile]) => {
+    const hits = profile.targets.filter((id) => detectedTargetIds.has(id)).length;
+    return { name, hits, score: hits - (profile.targets.length - hits) };
+  });
+  ranked.sort((a, b) => b.score - a.score || b.hits - a.hits || a.name.localeCompare(b.name));
+  return ranked[0]?.name;
+}

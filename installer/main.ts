@@ -96,7 +96,7 @@ async function chooseSelection(): Promise<{ selection: Selection; known: State["
   } else if (state) {
     selection = { targets: state.targets, items: state.items };
   } else {
-    profileName = interactive ? await promptProfile(profiles) : undefined;
+    profileName = interactive ? await promptProfile(profiles, detected) : undefined;
     const chosen = profileName ? profileSelection(profiles[profileName]!, catalog) : undefined;
     selection = chosen && adopted ? mergeSelections(chosen, adopted) : (chosen ?? adopted!);
   }
