@@ -78,9 +78,10 @@ in gitignored files, as `acli-jira/boards.md` does.
 
 ## Skills from other repositories
 
-None at the moment. A skill copied from another repository gets a line at the
-top of its `SKILL.md` naming the source repo, path and commit; there is no
-sync tooling (the former `sync-skills.sh` tracked nothing and was removed).
+`use-railway` comes from `railwayapp/railway-skills`. A skill copied from another
+repository gets a line right after the frontmatter of its `SKILL.md` naming the
+source repo, path and commit; there is no sync tooling (the former
+`sync-skills.sh` tracked nothing and was removed).
 
 ## T3 Code project files
 
