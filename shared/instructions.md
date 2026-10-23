@@ -118,3 +118,5 @@ Parallel work is faster. Subagents use their own context, not yours. An independ
 The GitHub CLI (`gh`) is available. Use it when you need PR context, PR metadata, the PR base branch, review comments or other GitHub workflow details.
 
 The Atlassian CLI (`acli`) is available for Jira work. Use it through the `acli-jira` skill when you need Jira ticket context, JQL search, ticket updates, or board and project metadata.
+
+The owner's notes vault is at `~/notes`. Use the `notes` skill to read or add notes.
