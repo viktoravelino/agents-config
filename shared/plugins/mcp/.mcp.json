@@ -7,6 +7,10 @@
     "wispr-flow": {
       "type": "http",
       "url": "https://api.wisprflow.ai/connect/mcp"
+    },
+    "zen-browser": {
+      "command": "npx",
+      "args": ["-y", "zen-mcp@1.2.2"]
     }
   }
 }
