@@ -9,15 +9,8 @@ export type AgentDefinition = {
   body: string;
 };
 
-const codexEffort: Record<string, string> = {
-  none: "none",
-  minimal: "minimal",
-  low: "low",
-  medium: "medium",
-  high: "high",
-  xhigh: "xhigh",
-  max: "xhigh",
-};
+/** Effort levels Codex accepts. Claude's `max` becomes `xhigh`. */
+const codexEfforts = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
 
 /** Parses a Claude agent `.md`; returns undefined when name or description is missing. */
 export function parseAgent(markdown: string): AgentDefinition | undefined {
@@ -43,17 +36,11 @@ function multilineString(value: string): string {
 
 /** Renders a Codex custom agent TOML. Emits only the keys Codex knows. */
 export function toCodexToml(agent: AgentDefinition): string {
-  const effort = agent.effort ? codexEffort[agent.effort] : undefined;
+  const effort = agent.effort === "max" ? "xhigh" : agent.effort;
   // smol-toml's stringify output ends with a newline, so the next line follows directly.
   return stringify({
     name: agent.name,
     description: agent.description,
-    ...(effort && { model_reasoning_effort: effort }),
+    ...(effort && codexEfforts.has(effort) && { model_reasoning_effort: effort }),
   }) + `developer_instructions = ${multilineString(agent.body)}\n`;
-}
-
-/** Claude agent `.md` text in, Codex agent TOML out. */
-export function translateAgent(markdown: string): string | undefined {
-  const agent = parseAgent(markdown);
-  return agent && toCodexToml(agent);
 }

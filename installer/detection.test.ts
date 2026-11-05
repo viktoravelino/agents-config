@@ -1,85 +1,44 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { applyPlan } from "./apply.ts";
-import type { Runner } from "./cli-plugin.ts";
-import { discoverCatalog, type ItemSelection } from "./catalog.ts";
-import { computePlan, wantedArtifacts } from "./plan.ts";
+import type { ItemSelection } from "./catalog.ts";
 import { targetChoices } from "./prompts.ts";
 import type { Owned } from "./state.ts";
 import { targets } from "./targets/registry.ts";
-import type { Context } from "./targets/types.ts";
+import { createFixture, nothing, planFor, removeFixture, type Fixture } from "./test-fixture.ts";
 
-let root: string;
-let ctx: Context;
-/** CLIs the fake runner can run, and the plugin commands it saw. */
-let runnable: Set<string>;
-let calls: string[];
-let installed: Set<string>;
-
-const fakeRun: Runner = (command, args) => {
-  calls.push(`${command} ${args.join(" ")}`);
-  if (!runnable.has(command)) return { code: 127, stdout: "", stderr: "not found" };
-  if (args[0] === "--version") return { code: 0, stdout: "1.0.0", stderr: "" };
-  if (args[1] === "marketplace") {
-    const list = args[2] === "list" ? { marketplaces: [{ name: "agents-config", marketplaceSource: { source: ctx.repo } }] } : {};
-    return { code: 0, stdout: JSON.stringify(list), stderr: "" };
-  }
-  if (args[1] === "add" || args[1] === "install") installed.add(`${command}:${args[2]}`);
-  const active = [...installed].filter((i) => i.startsWith(`${command}:`)).map((i) => i.slice(command.length + 1));
-  const listing =
-    command === "codex"
-      ? { installed: active.map((pluginId) => ({ pluginId, enabled: true })) }
-      : active.map((id) => ({ name: id.split("@")[0], marketplace: id.split("@")[1], enabled: true }));
-  return { code: 0, stdout: JSON.stringify(listing), stderr: "" };
-};
+let fx: Fixture;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "agents-config-detect-"));
-  const repo = join(root, "repo");
-  mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
-  mkdirSync(join(repo, "shared", "skills", "alpha"), { recursive: true });
-  mkdirSync(join(repo, "shared", "plugins", "mcp", ".claude-plugin"), { recursive: true });
-  writeFileSync(join(repo, "shared", "instructions.md"), "hi\n");
-  writeFileSync(join(repo, "shared", "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: A\n---\n");
-  writeFileSync(join(repo, ".claude-plugin", "marketplace.json"), JSON.stringify({ name: "agents-config" }));
-  writeFileSync(join(repo, "shared", "plugins", "mcp", ".claude-plugin", "plugin.json"), JSON.stringify({ name: "mcp" }));
-  writeFileSync(join(repo, "shared", "plugins", "mcp", ".mcp.json"), JSON.stringify({ mcpServers: { local: { command: "tool" } } }));
-  mkdirSync(join(root, "home"));
-  runnable = new Set(["codex", "copilot"]);
-  calls = [];
-  installed = new Set();
-  ctx = { home: join(root, "home"), repo, root: join(root, "fs"), path: "", run: fakeRun };
+  fx = createFixture();
 });
 
-afterEach(() => rmSync(root, { recursive: true, force: true }));
+afterEach(() => removeFixture(fx));
 
-const items: ItemSelection = { instructions: ["instructions"], skills: ["alpha"], agents: [], settings: [], mcp: ["local"] };
+const items: ItemSelection = { ...nothing, instructions: ["instructions"], skills: ["alpha"], mcp: ["local"] };
 const selected = ["claude", "codex", "copilot"];
 
-function plan(owned: Owned[], detected: string[]) {
-  const wanted = wantedArtifacts(discoverCatalog(ctx.repo), targets, selected, items, ctx, new Set(detected));
-  return { plan: computePlan(wanted.desired, owned, ctx, wanted.held), notices: wanted.notices };
-}
+/** Plans `items` for Claude, Codex and Copilot with only `detected` installed. */
+const plan = (owned: Owned[], detected: string[]) => planFor(fx.ctx, owned, selected, items, new Set(detected));
 
-const planned = (p: ReturnType<typeof plan>) => p.plan.actions.flatMap((a) => (a.type === "create" ? [a.desired.path.replace(ctx.home, "~")] : []));
+/** The created paths, with the home shown as `~`. */
+const planned = (p: ReturnType<typeof plan>) =>
+  p.actions.flatMap((a) => (a.type === "create" ? [a.desired.path.replace(fx.ctx.home, "~")] : []));
 
 test("an undetected target plans nothing, is announced, and keeps its owned artifacts", () => {
-  const owned = applyPlan(plan([], ["claude", "codex", "copilot"]).plan, fakeRun);
+  const { owned } = applyPlan(plan([], ["claude", "codex", "copilot"]), fx.ctx.run);
   const copilotOwned = owned.filter((o) => o.targets.includes("copilot") && o.targets.length === 1);
   expect(copilotOwned.length).toBeGreaterThan(0);
 
   const next = plan(owned, ["claude", "codex"]);
   expect(next.notices).toEqual(["Skipped GitHub Copilot: not found"]);
-  expect(next.plan.actions).toEqual([]);
-  expect(next.plan.kept.map((o) => o.path).sort()).toEqual(copilotOwned.map((o) => o.path).sort());
+  expect(next.actions).toEqual([]);
+  expect(next.kept.map((o) => o.path).sort()).toEqual(copilotOwned.map((o) => o.path).sort());
   // The skills link is shared, so it stays planned for Codex, and what we own is still recorded after applying.
-  expect(applyPlan(next.plan, fakeRun)).toHaveLength(owned.length);
+  expect(applyPlan(next, fx.ctx.run).owned).toHaveLength(owned.length);
 });
 
 test("a detected target without its CLI still gets links, but the plugin is skipped", () => {
-  runnable.delete("copilot");
+  fx.cli.runnable.delete("copilot");
   const result = plan([], ["claude", "codex", "copilot"]);
   expect(planned(result)).toContain("~/.copilot/copilot-instructions.md");
   expect(planned(result)).toContain("codex plugin mcp@agents-config");
@@ -88,11 +47,11 @@ test("a detected target without its CLI still gets links, but the plugin is skip
 });
 
 test("a missing CLI does not uninstall a plugin we own", () => {
-  const owned = applyPlan(plan([], ["claude", "codex", "copilot"]).plan, fakeRun);
-  runnable.delete("copilot");
+  const { owned } = applyPlan(plan([], ["claude", "codex", "copilot"]), fx.ctx.run);
+  fx.cli.runnable.delete("copilot");
   const next = plan(owned, ["claude", "codex", "copilot"]);
-  expect(next.plan.actions.filter((a) => a.type === "remove")).toEqual([]);
-  expect(next.plan.kept.map((o) => o.path)).toEqual(["copilot plugin mcp@agents-config"]);
+  expect(next.actions.filter((a) => a.type === "remove")).toEqual([]);
+  expect(next.kept.map((o) => o.path)).toEqual(["copilot plugin mcp@agents-config"]);
 });
 
 test("the target prompt offers only detected tools and never preselects the rest", () => {

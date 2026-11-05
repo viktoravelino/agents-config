@@ -90,8 +90,10 @@ const specs: Record<PluginCli, CliSpec> = {
   },
 };
 
-/** Whether installing a changed plugin needs a reinstall for the CLI to see it. */
-export const copiesPlugin = (cli: PluginCli) => specs[cli].copied;
+/** Whether the CLI keeps its own copy of the plugin, so a changed plugin needs a reinstall. */
+export function copiesPlugin(cli: PluginCli): boolean {
+  return specs[cli].copied;
+}
 
 /** Whether the plugin is installed and enabled right now. */
 export function pluginActive(ref: PluginRef, run: Runner): boolean {
@@ -145,6 +147,15 @@ export function uninstallPlugin(ref: PluginRef, run: Runner): void {
   }
 }
 
+/** The `name` of a JSON manifest; throws when it has none. */
+function manifestName(file: string): string {
+  const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+  const name = typeof parsed === "object" && parsed !== null && "name" in parsed ? parsed.name : undefined;
+  if (typeof name !== "string") throw new Error(`${file} has no name`);
+  return name;
+}
+
+/** Every file under `dir`, in a stable order. */
 function filesUnder(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true })
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -154,15 +165,13 @@ function filesUnder(dir: string): string[] {
 /** The repo's MCP plugin: its ids and a content hash over the plugin directory and the marketplace manifest. */
 export function mcpPlugin(repo: string): { id: string; marketplace: string; hash: string } {
   const manifest = join(repo, ".claude-plugin", "marketplace.json");
-  const marketplace: unknown = JSON.parse(readFileSync(manifest, "utf8"));
-  const name = typeof marketplace === "object" && marketplace !== null && "name" in marketplace ? marketplace.name : undefined;
-  if (typeof name !== "string") throw new Error(`${manifest} has no name`);
-  const plugin = JSON.parse(readFileSync(join(repo, "shared", "plugins", "mcp", ".claude-plugin", "plugin.json"), "utf8")) as { name?: unknown };
-  if (typeof plugin.name !== "string") throw new Error("shared/plugins/mcp/.claude-plugin/plugin.json has no name");
+  const pluginDir = join(repo, "shared", "plugins", "mcp");
+  const marketplace = manifestName(manifest);
+  const plugin = manifestName(join(pluginDir, ".claude-plugin", "plugin.json"));
 
   const hash = createHash("sha256");
-  for (const file of [manifest, ...filesUnder(join(repo, "shared", "plugins", "mcp"))]) {
+  for (const file of [manifest, ...filesUnder(pluginDir)]) {
     hash.update(relative(repo, file)).update("\0").update(readFileSync(file)).update("\0");
   }
-  return { id: `${plugin.name}@${name}`, marketplace: name, hash: hash.digest("hex") };
+  return { id: `${plugin}@${marketplace}`, marketplace, hash: hash.digest("hex") };
 }

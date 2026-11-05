@@ -19,7 +19,6 @@ export const bob: Target = {
     const version = shell && (await binaryVersion(shell));
     return detectionOf([shell && (version ? `Shell ${version}` : "Shell"), ideApps.some((app) => appInstalled(ctx, app)) && "IDE"]);
   },
-  scanDirs: () => [],
   install: {
     instructions: (item, { home }) => ({ kind: "symlink", path: join(home, ".bob", "rules", "agents-config.md"), source: item.source }),
     skills: agentsSkills,

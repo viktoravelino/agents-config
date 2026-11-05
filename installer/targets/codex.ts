@@ -12,7 +12,6 @@ export const codex: Target = {
   id: "codex",
   label: "Codex",
   detect: (ctx) => detectBinary("codex", ctx),
-  scanDirs: ({ home }) => [join(home, ".agents", "skills")],
   install: {
     instructions: (item, { home }) => ({ kind: "symlink", path: join(home, ".codex", "AGENTS.md"), source: item.source }),
     skills: agentsSkills,

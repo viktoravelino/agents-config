@@ -1,26 +1,20 @@
-import { cancel, groupMultiselect, isCancel, log, multiselect, select } from "@clack/prompts";
-import { emptyItems, withRequires, type Catalog, type Item, type Kind, type SkillGroup } from "./catalog.ts";
+import { cancel, groupMultiselect, isCancel, log, multiselect, select, type CANCEL_SYMBOL } from "@clack/prompts";
+import { emptyItems, withRequires, type Catalog, type Item, type SkillGroup } from "./catalog.ts";
 import { suggestProfile, type Profile, type Selection } from "./profiles.ts";
-import { targets } from "./targets/registry.ts";
-import type { Context, Detection, Target } from "./targets/types.ts";
+import { installableKinds, targets } from "./targets/registry.ts";
+import type { Detection, Target } from "./targets/types.ts";
 
 /** Unwraps a prompt result, exiting cleanly when the user cancels. */
-function answer<T>(value: T): Exclude<T, symbol> {
-  if (typeof value === "symbol" || isCancel(value)) {
+function answer<T>(value: T | typeof CANCEL_SYMBOL): T {
+  if (isCancel(value)) {
     cancel("Cancelled.");
     process.exit(0);
   }
-  return value as Exclude<T, symbol>;
+  return value;
 }
 
+/** Cuts a hint to fit on one line of the prompt. */
 const short = (text: string) => (text.length > 70 ? text.slice(0, 67) + "..." : text);
-
-/** Kinds at least one of the chosen targets can install. */
-function supportedKinds(chosen: string[]): Set<Kind> {
-  return new Set(
-    targets.filter((t) => chosen.includes(t.id)).flatMap((t) => Object.keys(t.install) as Kind[]),
-  );
-}
 
 /** First-run profile choice; undefined means "custom". */
 export async function promptProfile(
@@ -69,16 +63,12 @@ export function targetChoices(
   };
 }
 
-/** Walks the target and item prompts, preselecting `current`. */
+/** Walks the target and item prompts, preselecting `current`. `found` holds the detected tools. */
 export async function promptSelection(
   catalog: Catalog,
   current: Selection,
-  ctx: Context,
+  found: ReadonlyMap<string, Detection>,
 ): Promise<Selection> {
-  const found = new Map(
-    (await Promise.all(targets.map(async (t: Target) => [t.id, await t.detect(ctx)] as const))).flatMap(([id, d]) => (d ? [[id, d] as const] : [])),
-  );
-
   if (found.size === 0) {
     cancel("None of the supported tools were found.");
     process.exit(1);
@@ -92,7 +82,7 @@ export async function promptSelection(
   );
   // A saved tool that is not installed right now stays selected, so it returns when it is.
   const chosenTargets = [...picked, ...current.targets.filter((id) => !found.has(id) && !picked.includes(id))];
-  const supported = supportedKinds(picked);
+  const supported = installableKinds(picked);
   const items = emptyItems();
 
   const core = catalog.filter((i) => (i.kind === "instructions" || i.kind === "settings") && supported.has(i.kind));
@@ -171,6 +161,7 @@ export async function promptNewItems(fresh: Item[]): Promise<Item[]> {
 
 export type Confirmation = "apply" | "edit" | "cancel";
 
+/** Asks whether to apply the plan, edit the selection or stop. */
 export async function promptConfirm(): Promise<Confirmation> {
   return answer(
     await select<Confirmation>({

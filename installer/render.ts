@@ -1,6 +1,8 @@
 import { styleText } from "node:util";
 import type { Catalog } from "./catalog.ts";
 import { displayPath, type Action, type Plan } from "./plan.ts";
+import type { Owned } from "./state.ts";
+import type { Artifact } from "./targets/types.ts";
 
 const color = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
 const paint = (format: Parameters<typeof styleText>[0], text: string) => (color ? styleText(format, text) : text);
@@ -16,10 +18,11 @@ export function viaBySource(catalog: Catalog, via: Map<string, string>): Map<str
 }
 
 /** Display name of an artifact; a setting inside a shared JSON file also names its key. */
-function labelOf(a: { path: string; kind: string; keyPath?: string[] }, home: string): string {
-  return displayPath(a.path, home) + (a.kind === "json-setting" && a.keyPath ? ` [${a.keyPath.join(".")}]` : "");
+function labelOf(a: Artifact | Owned, home: string): string {
+  return displayPath(a.path, home) + (a.kind === "json-setting" ? ` [${a.keyPath.join(".")}]` : "");
 }
 
+/** One plan line, e.g. `+ ~/.claude/CLAUDE.md`. */
 function line(action: Action, home: string, via: Map<string, string>): string {
   switch (action.type) {
     case "create":
@@ -45,6 +48,7 @@ function line(action: Action, home: string, via: Map<string, string>): string {
   }
 }
 
+/** The targets an action serves. */
 function targetsOf(action: Action): string[] {
   switch (action.type) {
     case "create":

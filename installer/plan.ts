@@ -1,11 +1,10 @@
-import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, lstatSync, readFileSync, readlinkSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
-import { emptyItems, type Catalog, type ItemSelection } from "./catalog.ts";
-import { pluginActive } from "./cli-plugin.ts";
+import type { Catalog, ItemSelection } from "./catalog.ts";
+import { copiesPlugin, pluginActive } from "./cli-plugin.ts";
 import { readSetting } from "./json-setting.ts";
 import { sha256, type Owned } from "./state.ts";
-import { artifactFor, type Artifact, type Context, type Desired, type Target } from "./targets/types.ts";
+import { artifactFor, type Artifact, type Context, type Desired, type JsonValue, type Target } from "./targets/types.ts";
 
 export const backupSuffix = ".pre-agents-config-bak";
 
@@ -34,8 +33,10 @@ export type Plan = {
   actions: Action[];
   /** Desired artifacts already in place. */
   unchanged: Desired[];
-  /** Owned artifacts left alone because their tool is missing; they stay recorded as owned. */
+  /** Owned artifacts left alone (tool missing, file unreadable); they stay recorded as owned. */
   kept: Owned[];
+  /** One line per skipped target or artifact. */
+  notices: string[];
 };
 
 export type Wanted = {
@@ -80,8 +81,8 @@ export function wantedArtifacts(
 }
 
 /** Identity of an artifact: its path, plus the key for a setting inside a shared JSON file. */
-function keyOf(a: { path: string; kind: string; keyPath?: string[] }): string {
-  return a.kind === "json-setting" && a.keyPath ? `${a.path}#${a.keyPath.join("\0")}` : a.path;
+function keyOf(a: Artifact | Owned): string {
+  return a.kind === "json-setting" ? `${a.path}#${a.keyPath.join("\0")}` : a.path;
 }
 
 /**
@@ -113,6 +114,7 @@ export function desiredArtifacts(
   return [...byPath.values()];
 }
 
+/** `lstat` that returns undefined when nothing is at `path`. */
 function lstat(path: string) {
   try {
     return lstatSync(path);
@@ -121,32 +123,36 @@ function lstat(path: string) {
   }
 }
 
-/** Compares desired artifacts with the disk and the owned records; touches nothing. */
-export function computePlan(desired: Desired[], owned: Owned[], ctx: Context, held: ReadonlySet<string> = new Set()): Plan {
+/** Compares the wanted artifacts with the disk and the owned records; touches nothing. */
+export function computePlan({ desired, held, notices: wantedNotices }: Wanted, owned: Owned[], ctx: Context): Plan {
   const ownedByPath = new Map(owned.map((o) => [keyOf(o), o]));
   const wanted = new Set(desired.map(keyOf));
   const actions: Action[] = [];
   const unchanged: Desired[] = [];
   const kept: Owned[] = [];
+  const notices = [...wantedNotices];
 
   for (const d of desired) {
+    const record = ownedByPath.get(keyOf(d));
     if (d.kind === "cli-plugin") {
-      const record = ownedByPath.get(keyOf(d));
       if (!pluginActive(d, ctx.run)) actions.push({ type: "create", desired: d });
       // A live plugin follows the checkout; only a copied one goes stale.
-      else if (!d.copied || (record?.kind === "cli-plugin" && record.hash === d.hash)) unchanged.push(d);
+      else if (!copiesPlugin(d.cli) || (record?.kind === "cli-plugin" && record.hash === d.hash)) unchanged.push(d);
       else actions.push({ type: "update", desired: d });
       continue;
     }
-    const stat = lstat(d.path);
-    const record = ownedByPath.get(keyOf(d));
     if (d.kind === "json-setting") {
-      const current = stat ? readSetting(d.path, d.keyPath) : undefined;
-      if (current === undefined) actions.push({ type: "create", desired: d });
-      else if (isDeepStrictEqual(current, d.value)) unchanged.push(d);
+      const current = settingNow(d.path, d.keyPath);
+      if ("error" in current) {
+        // Writing into a file we cannot parse could break it; leave it to the user.
+        notices.push(`Skipped ${d.keyPath.join(".")}: ${current.error}`);
+        if (record) kept.push(record);
+      } else if (current.value === undefined) actions.push({ type: "create", desired: d });
+      else if (isDeepStrictEqual(current.value, d.value)) unchanged.push(d);
       else actions.push({ type: "conflict", cause: "edited", targets: d.targets, path: d.path, desired: d, owned: record, resolution: "keep" });
       continue;
     }
+    const stat = lstat(d.path);
     if (!stat) {
       actions.push({ type: "create", desired: d });
       continue;
@@ -202,74 +208,32 @@ export function computePlan(desired: Desired[], owned: Owned[], ctx: Context, he
           actions.push({ type: "conflict", cause: "edited", targets: o.targets, path: o.path, owned: o, resolution: "keep" });
         }
         break;
-      case "json-setting":
+      case "json-setting": {
         // A key the user changed or removed is theirs now; leave it.
-        if (stillHolds(o.path, o.keyPath, o.value)) actions.push({ type: "remove", owned: o, reason: "deselected" });
+        const current = settingNow(o.path, o.keyPath);
+        if ("value" in current && isDeepStrictEqual(current.value, o.value)) {
+          actions.push({ type: "remove", owned: o, reason: "deselected" });
+        }
         break;
+      }
     }
   }
 
-  return { actions, unchanged, kept };
+  return { actions, unchanged, kept, notices };
 }
 
-function stillHolds(path: string, keyPath: string[], value: unknown): boolean {
+/** The value of a setting now, or the parse error that hides it. */
+function settingNow(path: string, keyPath: string[]): { value: JsonValue | undefined } | { error: string } {
   try {
-    return isDeepStrictEqual(readSetting(path, keyPath), value);
-  } catch {
-    return false;
+    return { value: readSetting(path, keyPath) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 }
 
+/** A conflict for a path that holds something the installer does not own. */
 function inTheWay(d: Desired): Action {
   return { type: "conflict", cause: "in-the-way", targets: d.targets, path: d.path, desired: d, resolution: "backup" };
-}
-
-/**
- * Symlinks the installer would already have made: any link in a target's
- * scan dirs pointing into the repo, plus links at exactly-desired paths.
- * Used to migrate from install.sh on first run.
- */
-export function adoptExisting(catalog: Catalog, targetList: Target[], ctx: Context): Owned[] {
-  const found = new Map<string, Owned>();
-  const consider = (targetId: string, path: string, expected?: string) => {
-    if (path.endsWith(backupSuffix) || !lstat(path)?.isSymbolicLink()) return;
-    const source = readlinkSync(path);
-    const ours = expected !== undefined ? source === expected : source.startsWith(ctx.repo + "/");
-    if (ours && !found.has(path)) found.set(path, { targets: [targetId], path, kind: "symlink", source });
-  };
-  for (const target of targetList) {
-    for (const dir of target.scanDirs(ctx)) {
-      if (!existsSync(dir)) continue;
-      for (const entry of readdirSync(dir)) consider(target.id, join(dir, entry));
-    }
-    for (const item of catalog) {
-      const artifact = artifactFor(target, item, ctx);
-      if (artifact?.kind === "symlink") consider(target.id, artifact.path, artifact.source);
-    }
-  }
-  return [...found.values()];
-}
-
-/** Which targets and items the adopted links already cover. */
-export function selectionFromOwned(
-  catalog: Catalog,
-  targetList: Target[],
-  owned: Owned[],
-  ctx: Context,
-): { targets: string[]; items: ItemSelection } {
-  // Shared destinations are adopted under the first target that scans them, so match on that.
-  const ownedBy = new Map(owned.map((o) => [o.path, o.targets] as const));
-  const targets = new Set<string>();
-  const items = emptyItems();
-  for (const target of targetList) {
-    for (const item of catalog) {
-      const artifact = artifactFor(target, item, ctx);
-      if (!artifact || !ownedBy.get(artifact.path)?.includes(target.id)) continue;
-      targets.add(target.id);
-      if (!items[item.kind].includes(item.name)) items[item.kind].push(item.name);
-    }
-  }
-  return { targets: [...targets], items };
 }
 
 /** Joins a path under the home dir for display, e.g. `~/.claude/CLAUDE.md`. */
