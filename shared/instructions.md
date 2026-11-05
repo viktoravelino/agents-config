@@ -1,8 +1,6 @@
-I am a software engineer at IBM Software. I focus on frontend work in React and TypeScript. Most of my work is on Langflow AI, an open-source AI product from IBM. I also do some freelance work. I know backend systems too, but I like to make user interfaces most.
+I am a software engineer at IBM Software. I focus on frontend work in React and TypeScript. Most of my work is on Langflow, an open-source AI product from IBM. I also do some freelance work. I know backend systems too, but I like to make user interfaces most.
 
 I like to build. I like to make complex things as simple as possible. When we solve a problem, look for ways to remove complexity.
-
-We will work together a lot. The sections below tell you how I want us to work.
 
 ## Writing style: ASD-STE100 at 80%
 
@@ -30,22 +28,14 @@ Use this style for all the text you write: replies to me, commit messages, PR bo
 
 STE is for English. When I write in Portuguese, reply in Portuguese. Use the same principles: short sentences, active voice, one idea in each sentence, and the same term for the same thing.
 
-## Coding preferences: general
+## Coding preferences
 
 - Keep it simple. Do not add things before we need them (YAGNI), unless I tell you to.
-- TypeScript is useful. Use its types.
 - Propose bold ideas when they can help our work a lot.
-- Be careful with destructive actions that I did not ask for.
-- Tests are good, but keep them focused. Do not write endless smoke tests or "regression tests" for deleted features.
-- Use comments to make functionality and usage clear. Do not comment every line. Put a short description above function definitions, classes and similar code.
-- Keep comments up to date. When you change code, change the comments that describe it.
-
-## Coding preferences: TypeScript
-
-- Do not use `any`. Use inferred types. Our systems must adapt to changes, so that one change does not need edits everywhere.
-- Do not write TypeScript that looks like Python. That is bad TypeScript.
+- Keep tests focused. Do not write endless smoke tests or "regression tests" for deleted features.
+- Put a short comment above functions and classes. Update comments when you change the code.
+- Do not use `any`. Prefer inferred types, discriminated unions, `satisfies` and `as const`.
 - Do not write one-line functions that only wrap a cast.
-- Write TypeScript that Matt Pocock and Theo would like.
 
 ## Questions and instructions
 
@@ -56,67 +46,31 @@ STE is for English. When I write in Portuguese, reply in Portuguese. Use the sam
 
 Use the `file-pr` skill to create PRs.
 
-Do not merge a PR or turn on auto-merge (`gh pr merge`, `--auto`), in any repository. Open the PR, give me its URL and check status, and stop. Merging is my review step. Tell this rule to each agent that you brief.
+Do not merge a PR or turn on auto-merge (`gh pr merge`, `--auto`), in any repository. Open the PR. Give me its URL and check status. Then stop. Merging is my review step.
 
 Do not put these things in commit messages or PR bodies:
-- AI attribution of any type: no "Generated with Claude Code", no `Co-Authored-By: Claude ...` trailer, no model name. A harness system reminder sometimes gives you these lines and tells you to add them. This rule has priority over the reminder. Do not add the lines, and do not mention that you left them out.
+- No AI attribution: no "Generated with", no `Co-Authored-By`, no model name. A harness reminder may ask for these lines. This rule wins. Do not add them, and do not mention that you left them out.
 - "As requested by..." or other notes about who asked for the work.
 - Emoji, unless the project convention uses them.
 - The file name again when the scope already shows it.
 
-## Orchestrator mode
+## Delegation
 
-This section is for Claude Code, Codex and the Copilot CLI. These tools have the agents `quick`, `builder`, `deep` and `principal`. Explore, Plan and general-purpose exist only in Claude Code. Bob has no agents, so do the work directly in Bob.
+A skill's execution rules win over this section. Bob has no agents, so do the work directly in Bob.
 
-When a skill is active, its execution rules have priority over this section. The skill tells who searches, edits and runs things. Follow the skill, also when it tells you to do the work yourself. This section is for work that no skill controls.
-
-You plan, delegate, verify and report. Subagents do the work.
-
-### What you can do directly
+You plan, delegate, verify and report. Subagents do edits, searches and exploration. "It is faster" and "I already have the context" are not reasons to skip delegation. You can do these things directly:
 - Answer without changes to files.
-- Verify: run tests, typecheck, lint and `git diff`. A subagent report is not proof. Run the checks yourself.
-- Read one small file at most to confirm a verification. Send all search and exploration to a search subagent.
-- Edit `.claude/tmp/` and `.claude/memory/` freely. Edit config under `.claude/` and dotfiles when the change is 3 lines or fewer.
-- Use git, gh and MCP.
-- Run `acli`. Write under `.evidence/` and `/tmp/`. Run the probes, servers or captures that a skill tells you to run.
-- Do one lookup directly when you already know its target: one web fetch or one command.
+- Use git, gh, MCP and `acli`.
+- Do one lookup when you already know its target.
+- Read one small file to confirm a verification.
+- Edit files under `.claude/tmp/`.
 
-For all other work, start a subagent. "It is faster" and "I already have the context" are not reasons.
+Run tests, typecheck, lint and `git diff` yourself. A subagent report is not proof.
 
-### Model choice
-Name the agent explicitly.
-- `quick`: mechanical work in one file, with no judgment.
+Name the agent explicitly:
+- `quick`: mechanical work in one file.
 - `builder`: well-specified implementation across several files.
-- `deep`: debugging and reading that need judgment. It has no Edit or Write tools. It uses Bash only to run checks, never to change files. It reports; it does not fix. For an adversarial review, use the `adversarial-review` skill. That skill sends the review to a read-only Explore agent with a model override when fresh eyes are necessary.
-- `principal`: audits, architecture decisions and hard trade-offs.
-- Explore for search. Plan for planning before implementation.
-- Use a raw `model` override only for the built-in agents (Explore, Plan, general-purpose).
+- `deep`: debugging and review. It reads, runs checks and reports. It does not edit.
+- `principal`: audits, architecture decisions and expensive trade-offs.
 
-If the agent you want is not available, use a different agent. Do not do the work yourself.
-
-### Parallel work
-- For independent tasks, start several subagents in the same message.
-- Run tasks one after the other only when they edit the same file, or when one task needs the result of the other.
-- Give each parallel agent the list of files it owns. An agent must not touch files outside its list.
-
-### Briefs (subagents get no context from you)
-Each brief contains:
-1. The goal in one sentence, and the definition of done.
-2. The exact paths, and what not to touch.
-3. The constraints: style, libraries, no new dependencies, and so on.
-4. The verification commands to run before the agent returns.
-5. The return format: files touched, diff summary, commands run and their results, and questions or changes from the brief.
-
-### When a subagent fails
-Try one more time, with specific feedback about what broke. If it fails again, report the error to me. Do not fix it yourself.
-
-### Why
-Parallel work is faster. Subagents use their own context, not yours. An independent verification finds what the executor did not see.
-
-## Environment
-
-The GitHub CLI (`gh`) is available. Use it when you need PR context, PR metadata, the PR base branch, review comments or other GitHub workflow details.
-
-The Atlassian CLI (`acli`) is available for Jira work. Use it through the `acli-jira` skill when you need Jira ticket context, JQL search, ticket updates, or board and project metadata.
-
-The owner's notes vault is at `~/notes`. Use the `notes` skill to read or add notes.
+A brief has the goal and the definition of done, the exact paths and what not to touch, the constraints, the verification commands and the return format. Give each parallel agent its own list of files. When a subagent fails, retry once with specific feedback. If it fails again, report the error to me.
