@@ -21,8 +21,8 @@ export type Artifact = {
   | { kind: "symlink"; source: string }
   | { kind: "file"; source: string; content: string }
   | { kind: "json-setting"; keyPath: string[]; value: JsonValue }
-  /** A plugin the CLI installs itself. `hash` covers the plugin content; `copied` says whether the CLI keeps its own copy. */
-  | ({ kind: "cli-plugin"; hash: string; copied: boolean } & PluginRef)
+  /** A plugin the CLI installs itself. `hash` covers the plugin content. */
+  | ({ kind: "cli-plugin"; hash: string } & PluginRef)
 );
 
 /** An artifact plus every selected target that wants it (shared destinations list several). */
@@ -39,8 +39,6 @@ export type Target = {
   label: string;
   /** Undefined when the tool is not installed. */
   detect(ctx: Context): Promise<Detection | undefined>;
-  /** Directories whose symlinks into the repo are adopted on first run. */
-  scanDirs(ctx: Context): string[];
   install: { [K in Kind]?: Installer<K> };
   /** Artifacts that depend on the whole selection rather than on one item. */
   extras?(items: ItemSelection, ctx: Context): Artifact[];

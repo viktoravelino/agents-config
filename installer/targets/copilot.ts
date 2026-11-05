@@ -37,7 +37,6 @@ export const copilot: Target = {
       existsSync(vscodeCopilotManifest(ctx)) && "VS Code",
     ]);
   },
-  scanDirs: () => [],
   install: {
     instructions: (item, { home }) => ({ kind: "symlink", path: join(home, ".copilot", "copilot-instructions.md"), source: item.source }),
     skills: agentsSkills,

@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { PluginRef } from "./cli-plugin.ts";
-import { emptyItems, type ItemSelection } from "./catalog.ts";
+import { kinds, type ItemSelection } from "./catalog.ts";
 import type { JsonValue } from "./targets/types.ts";
 
 /**
- * An artifact the installer created or adopted, and may later change or
+ * An artifact the installer created or found in place, and may later change or
  * remove. `targets` lists every target that wanted it, since destinations
  * like ~/.agents/skills are shared.
  */
@@ -35,22 +35,27 @@ export function statePath(home: string, xdgConfigHome = process.env.XDG_CONFIG_H
   return join(xdgConfigHome || join(home, ".config"), "agents-config", "state.json");
 }
 
+/** Hex sha256 of a string. */
 export function sha256(content: string): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
-function isStringList(value: unknown): value is string[] {
+/** Whether a parsed JSON value is a list of strings. */
+export function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
+/** Whether a parsed JSON value maps every kind to item names. */
 function isItemSelection(value: unknown): value is ItemSelection {
   if (typeof value !== "object" || value === null) return false;
-  return Object.values(value).every(isStringList);
+  const v: Record<string, unknown> = { ...value };
+  return kinds.every((kind) => isStringList(v[kind]));
 }
 
+/** Whether a parsed JSON value has the shape of the saved state. */
 function isState(value: unknown): value is State {
   if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
+  const v: Record<string, unknown> = { ...value };
   return (
     v.version === 1 &&
     isStringList(v.targets) &&
@@ -60,35 +65,15 @@ function isState(value: unknown): value is State {
   );
 }
 
-/** Older state recorded a single `target` per owned artifact. */
-function migrateOwned(value: unknown): unknown {
-  if (typeof value !== "object" || value === null || !("target" in value) || "targets" in value) return value;
-  const { target, ...rest } = value;
-  return { ...rest, targets: [target] };
-}
-
-/** Older state predates some kinds; treat them as empty. */
-function fillKinds(value: unknown): unknown {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? { ...emptyItems(), ...value } : value;
-}
-
 /** Loads saved state; undefined when absent. Throws on a file it cannot understand. */
 export function loadState(file: string): State | undefined {
   if (!existsSync(file)) return undefined;
-  const raw: unknown = JSON.parse(readFileSync(file, "utf8"));
-  const parsed =
-    typeof raw === "object" && raw !== null && "owned" in raw && Array.isArray(raw.owned)
-      ? {
-          ...raw,
-          owned: raw.owned.map(migrateOwned),
-          ...("items" in raw && { items: fillKinds(raw.items) }),
-          ...("known" in raw && { known: fillKinds(raw.known) }),
-        }
-      : raw;
+  const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
   if (!isState(parsed)) throw new Error(`Unrecognized state file: ${file}`);
   return parsed;
 }
 
+/** Writes the state file, creating its directory. */
 export function saveState(file: string, state: State): void {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(state, null, 2) + "\n");

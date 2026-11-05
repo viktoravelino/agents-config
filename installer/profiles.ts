@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { emptyItems, kinds, type Catalog, type ItemSelection, type Kind } from "./catalog.ts";
+import { isStringList } from "./state.ts";
 
 /** A partial selection: targets plus item names per kind, or "all" of a kind. */
 export type Profile = {
@@ -10,7 +11,19 @@ export type Profile = {
 
 export type Selection = { targets: string[]; items: ItemSelection };
 
-/** Reads `profiles/*.json`, keyed by file name without extension. */
+/** Whether a parsed JSON value has the shape of a profile. */
+function isProfile(value: unknown): value is Profile {
+  if (typeof value !== "object" || value === null || !("targets" in value) || !("items" in value)) return false;
+  const { targets, items } = value;
+  return (
+    isStringList(targets) &&
+    typeof items === "object" &&
+    items !== null &&
+    Object.values(items).every((names) => names === "all" || isStringList(names))
+  );
+}
+
+/** Reads `profiles/*.json`, keyed by file name without extension. Throws on a file that is not a profile. */
 export function loadProfiles(repo: string): Record<string, Profile> {
   const dir = join(repo, "profiles");
   if (!existsSync(dir)) return {};
@@ -18,10 +31,12 @@ export function loadProfiles(repo: string): Record<string, Profile> {
     readdirSync(dir)
       .filter((file) => file.endsWith(".json"))
       .sort()
-      .map((file): [string, Profile] => [
-        basename(file, ".json"),
-        JSON.parse(readFileSync(join(dir, file), "utf8")),
-      ]),
+      .map((file) => {
+        const path = join(dir, file);
+        const profile: unknown = JSON.parse(readFileSync(path, "utf8"));
+        if (!isProfile(profile)) throw new Error(`Unrecognized profile: ${path}`);
+        return [basename(file, ".json"), profile] as const;
+      }),
   );
 }
 
@@ -36,27 +51,14 @@ export function profileSelection(profile: Profile, catalog: Catalog): Selection 
   return { targets: profile.targets, items };
 }
 
-/** Union of two selections, keeping order. */
-export function mergeSelections(a: Selection, b: Selection): Selection {
-  const union = (x: string[], y: string[]) => [...new Set([...x, ...y])];
-  const items = emptyItems();
-  for (const kind of kinds) items[kind] = union(a.items[kind], b.items[kind]);
-  return { targets: union(a.targets, b.targets), items };
-}
-
 /**
- * Picks the profile that best fits the detected tools. Score is detected
- * targets minus missing targets. Ties go to more detected targets, then to
- * the first name alphabetically.
+ * Suggests the profile with the most targets among those whose targets are
+ * all detected. Undefined when no profile fits.
  */
 export function suggestProfile(
   profiles: Record<string, Profile>,
   detectedTargetIds: ReadonlySet<string>,
 ): string | undefined {
-  const ranked = Object.entries(profiles).map(([name, profile]) => {
-    const hits = profile.targets.filter((id) => detectedTargetIds.has(id)).length;
-    return { name, hits, score: hits - (profile.targets.length - hits) };
-  });
-  ranked.sort((a, b) => b.score - a.score || b.hits - a.hits || a.name.localeCompare(b.name));
-  return ranked[0]?.name;
+  const fits = Object.entries(profiles).filter(([, p]) => p.targets.every((id) => detectedTargetIds.has(id)));
+  return fits.sort(([, a], [, b]) => b.targets.length - a.targets.length)[0]?.[0];
 }

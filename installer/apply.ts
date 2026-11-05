@@ -6,6 +6,7 @@ import { backupSuffix, type Plan } from "./plan.ts";
 import { sha256, type Owned } from "./state.ts";
 import type { Desired } from "./targets/types.ts";
 
+/** Whether anything (also a dangling symlink) exists at `path`. */
 function present(path: string): boolean {
   try {
     lstatSync(path);
@@ -24,6 +25,7 @@ function backUp(path: string, copy: boolean): void {
   else renameSync(path, backup);
 }
 
+/** Puts one desired artifact in place. */
 function write(d: Desired, run: Runner): void {
   switch (d.kind) {
     case "symlink":
@@ -44,6 +46,7 @@ function write(d: Desired, run: Runner): void {
   }
 }
 
+/** The record the installer keeps for an artifact it put in place. */
 function toOwned(d: Desired): Owned {
   const base = { targets: d.targets, path: d.path };
   switch (d.kind) {
@@ -58,25 +61,34 @@ function toOwned(d: Desired): Owned {
   }
 }
 
-/** Raised after a plan finished when some write failed; `owned` is what the installer owns regardless. */
-export class ApplyError extends Error {
-  constructor(
-    readonly failures: string[],
-    readonly owned: Owned[],
-  ) {
-    super(failures.join("\n"));
+/** What a plan run leaves behind: the artifacts the installer owns, and one line per failed step. */
+export type ApplyResult = { owned: Owned[]; failures: string[] };
+
+/** Undoes one owned artifact. */
+function remove(o: Owned, run: Runner): void {
+  switch (o.kind) {
+    case "json-setting":
+      writeSetting(o.path, o.keyPath, undefined);
+      break;
+    case "cli-plugin":
+      uninstallPlugin(o, run);
+      break;
+    case "symlink":
+    case "file":
+      rmSync(o.path);
+      break;
   }
 }
 
 /**
- * Executes a plan and returns the artifacts the installer owns afterwards.
- * A failing write (e.g. a plugin CLI command) does not stop the rest of the
- * plan; it is reported by throwing an ApplyError at the end.
+ * Executes a plan and returns what the installer owns afterwards. A failing
+ * step (for example a plugin CLI command) does not stop the rest of the plan.
+ * A failed step keeps its old record, so the next run tries it again.
  */
-export function applyPlan(plan: Plan, run: Runner = spawnRunner): Owned[] {
+export function applyPlan(plan: Plan, run: Runner): ApplyResult {
   const owned = [...plan.unchanged.map(toOwned), ...plan.kept];
   const failures: string[] = [];
-  /** Failures are collected so the other artifacts still land. */
+  /** Runs one step and records its failure; true when it succeeded. */
   const attempt = (label: string, fn: () => void): boolean => {
     try {
       fn();
@@ -93,25 +105,21 @@ export function applyPlan(plan: Plan, run: Runner = spawnRunner): Owned[] {
         if (attempt(action.desired.path, () => write(action.desired, run))) owned.push(toOwned(action.desired));
         break;
       case "remove":
-        if (action.owned.kind === "json-setting") writeSetting(action.owned.path, action.owned.keyPath, undefined);
-        else if (action.owned.kind === "cli-plugin") {
-          const ref = action.owned;
-          if (!attempt(ref.path, () => uninstallPlugin(ref, run))) owned.push(ref);
-        } else rmSync(action.owned.path);
+        if (!attempt(action.owned.path, () => remove(action.owned, run))) owned.push(action.owned);
         break;
-      case "conflict":
-        if (action.resolution === "keep") {
-          if (action.owned) owned.push(action.owned);
-          break;
-        }
-        backUp(action.path, action.desired?.kind === "json-setting");
-        if (action.desired) {
-          write(action.desired, run);
-          owned.push(toOwned(action.desired));
-        }
+      case "conflict": {
+        const { desired, owned: record } = action;
+        const done =
+          action.resolution === "backup" &&
+          attempt(action.path, () => {
+            backUp(action.path, desired?.kind === "json-setting");
+            if (desired) write(desired, run);
+          });
+        if (done && desired) owned.push(toOwned(desired));
+        else if (!done && record) owned.push(record);
         break;
+      }
     }
   }
-  if (failures.length) throw new ApplyError(failures, owned);
-  return owned;
+  return { owned, failures };
 }

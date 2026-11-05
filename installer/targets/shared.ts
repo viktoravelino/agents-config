@@ -17,16 +17,14 @@ export const mcpPluginFor =
   (cli: PluginCli): Installer<"mcp"> =>
   (_item, { repo }) => {
     const { id, marketplace, hash } = mcpPlugin(repo);
-    const copied = copiesPlugin(cli);
     return {
       kind: "cli-plugin",
       path: `${cli} plugin ${id}`,
-      note: `installs every MCP server in the plugin${copied ? "; reinstalled when it changes" : "; read live from the checkout"}`,
+      note: `installs every MCP server in the plugin; ${copiesPlugin(cli) ? "reinstalled when it changes" : "read live from the checkout"}`,
       cli,
       id,
       marketplace,
       repo,
       hash,
-      copied,
     };
   };
