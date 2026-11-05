@@ -33,8 +33,8 @@ beforeEach(() => {
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-/** Returns "LEVEL path: reason" lines for easy matching. */
-const lines = () => checkRepo(root).map((f) => `${f.level} ${f.path}: ${f.reason}`);
+/** Returns "FAIL path: reason" lines for easy matching. */
+const lines = () => checkRepo(root).map((f) => `FAIL ${f.path}: ${f.reason}`);
 
 test("clean fixture passes", () => {
   expect(lines()).toEqual([]);

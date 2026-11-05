@@ -3,7 +3,7 @@ import { basename, join, relative, resolve } from "node:path";
 import { parseFrontmatter, str, strList } from "./frontmatter.ts";
 
 /** One problem found in the repo. `path` is relative to the repo root. */
-export type Finding = { level: "FAIL"; path: string; reason: string };
+export type Finding = { path: string; reason: string };
 
 /** Allowed skill names. Bob and VS Code skip skills that break this rule. */
 const skillNamePattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -140,7 +140,7 @@ function checkMarketplace(root: string, fail: Report) {
 export function checkRepo(root: string): Finding[] {
   const findings: Finding[] = [];
   const fail: Report = (path, reason) =>
-    findings.push({ level: "FAIL", path: relative(root, path) || ".", reason });
+    findings.push({ path: relative(root, path) || ".", reason });
 
   const skillsDir = join(root, "shared", "skills");
   const skills = listDirs(skillsDir);
@@ -163,7 +163,7 @@ export function checkRepo(root: string): Finding[] {
 
 /** Prints findings and returns the exit code. */
 export function report(findings: Finding[]): number {
-  for (const { level, path, reason } of findings) console.log(`${level} ${path}: ${reason}`);
+  for (const { path, reason } of findings) console.log(`FAIL ${path}: ${reason}`);
   const failures = findings.length;
   console.log(
     failures === 0 ? "check passed" : `check failed: ${failures} failure${failures === 1 ? "" : "s"}`,
