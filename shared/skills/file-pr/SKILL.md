@@ -1,6 +1,6 @@
 ---
 name: file-pr
-description: File a concise pull request. Use when the user asks to file, open, or create a PR.
+description: Files a concise pull request with a base branch, title and description that follow the repo's conventions. Use when the user asks to file, open or create a PR or pull request.
 argument-hint: "[base branch]"
 ---
 
@@ -12,7 +12,7 @@ Then choose the base branch. Use the first rule that gives an answer:
 
 1. The base branch the user named.
 2. The base of the existing PR.
-3. The project profile's base-branch rules. `basename -s .git "$(git remote get-url origin)"` gives a name. If a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **workflow** file. If not, look for a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, and read its **workflow** file.
+3. The project profile's base-branch rules. Read the project profile: the skill next to this one whose `metadata.repos` lists the origin's `owner/repo`. Read its **workflow** file.
 4. Without a profile, if the repo cuts `release-*` or similar branches, the branch that the work targets. Several can be open at once. If the ticket, the labels, or the branch point do not make it clear, ask. Do not take the newest branch.
 5. The repo's default branch: `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
 

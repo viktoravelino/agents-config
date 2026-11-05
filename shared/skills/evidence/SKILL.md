@@ -1,6 +1,6 @@
 ---
 name: evidence
-description: Where and how to keep proof for ticket, debugging, and review work -- the durable .evidence store under the common git dir, probe scripts and their watchdogs, what counts as proof, matched before/after captures, and cleanup. Referenced by validate-ticket, work-ticket, diagnose, and adversarial-review.
+description: Defines where and how to keep proof for ticket, debugging and review work -- the durable evidence store under the common git dir, probe scripts and their watchdogs, what counts as proof, matched before/after captures, and cleanup. Use when a step must capture, store or share proof, as validate-ticket, work-ticket, diagnose and adversarial-review do.
 user-invocable: false
 ---
 

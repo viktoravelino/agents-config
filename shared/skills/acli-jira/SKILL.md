@@ -1,6 +1,6 @@
 ---
 name: acli-jira
-description: Use acli to manage Jira tickets from the command line -- search, view, create, edit, transition, assign, comment, link, and more.
+description: Manages Jira tickets with the acli CLI: search, view, create, edit, transition, comment, link. Use when the user mentions Jira, a ticket key such as LE-123, JQL, or a board.
 argument-hint: "[ticket key or what to do]"
 ---
 

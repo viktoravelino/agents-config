@@ -1,6 +1,6 @@
 ---
 name: request-review
-description: Produce the copy-pasteable message that asks a team to review a PR. Use the review channel that the repository's project profile defines. Use when the user asks to request a review, ping the review channel, or ask for eyes on a PR.
+description: Produces the copy-pasteable message that asks a team to review a PR, for the review channel that the repository's project profile defines. Use when the user asks to request a review, ping the review channel, or ask for eyes on a PR.
 argument-hint: "[PR number or URL]"
 ---
 
@@ -10,7 +10,7 @@ Output a ready-to-send message for the project's review channel. **You do not po
 
 ## Project profile
 
-Resolve the repo's profile. `basename -s .git "$(git remote get-url origin)"` gives a name. If a skill with that name is next to this one (`../<name>/SKILL.md`), read its **workflow** file. If not, look for a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, and read its **workflow** file. Its "Review channel" section defines the team handles, how to pick them, and the message shape. Its "Jira" section gives the browse URL and the key pattern.
+Read the project profile: the skill next to this one whose `metadata.repos` lists the origin's `owner/repo`. Read its **workflow** file. Its "Review channel" section defines the team handles, how to pick them, and the message shape. Its "Jira" section gives the browse URL and the key pattern.
 
 If there is no profile, or it has no review channel, say that no review channel is set up for this repo and stop. Do not borrow the handles of another project.
 
