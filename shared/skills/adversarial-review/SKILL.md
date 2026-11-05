@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Run an adversarial code review of a diff (working tree, commit range, branch, or PR). The review attacks the change from security, correctness, completeness, frontend-behavior, and code-quality angles, verifies every suspicion against surrounding code, and emits structured JSON findings that an author agent can use and act on. Use when the user asks for an adversarial review, a hostile review, to "attack this diff", or to review changes before merge.
+description: Runs an adversarial code review of a diff (working tree, commit range, branch, or PR). It attacks the change from security, correctness, completeness, frontend-behavior, and code-quality angles, verifies every suspicion against the surrounding code, and emits structured JSON findings that an author agent can act on. Use when the user asks for an adversarial review, a hostile review, to "attack this diff", or to review changes before merge.
 argument-hint: "[PR number | commit range | branch]"
 metadata:
   requires: [evidence, git-worktree]
