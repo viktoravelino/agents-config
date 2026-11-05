@@ -237,7 +237,6 @@ Codex, GitHub Copilot and IBM Bob:
   same name.
 
 Each problem prints as `FAIL <path>: <reason>`, and the command exits with 1.
-Problems in `use-railway` print as `WARN`, because it comes from upstream.
 
 The GitHub Actions workflow `.github/workflows/check.yml` runs `bun test`,
 `bunx tsc --noEmit` and `bun run check`. It runs on each push to `main` and on
