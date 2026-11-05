@@ -3,7 +3,7 @@ name: adversarial-review
 description: Run an adversarial code review of a diff (working tree, commit range, branch, or PR). The review attacks the change from security, correctness, completeness, frontend-behavior, and code-quality angles, verifies every suspicion against surrounding code, and emits structured JSON findings that an author agent can use and act on. Use when the user asks for an adversarial review, a hostile review, to "attack this diff", or to review changes before merge.
 argument-hint: "[PR number | commit range | branch]"
 metadata:
-  requires: [evidence]
+  requires: [evidence, git-worktree]
 ---
 
 # Adversarial Review
@@ -27,44 +27,22 @@ Also collect the items below. Ask only if you cannot get them any other way.
 
 - **Intent**: what the diff claims to do. Get it from the user, the PR description, the commit messages or the linked ticket. The review attacks the gap between the claim and the code.
 - **Constraints**: paths, services or ports that the reviewer must not touch. The review is always read-only: no edits, no commits, no formatters, no dev servers. You may run read-only checks (`ruff check`, `tsc --noEmit`, linters).
-- **Project profile**: `basename -s .git "$(git remote get-url origin)"` gives a name. If a skill with that name sits next to this one (`../<name>/SKILL.md`), use it. If not, use a sibling profile whose `metadata.repos` lists the origin's `owner/repo`. Read its **review** file and pass it to the reviewer agent together with the angles. The profile adds project-specific targets and check commands. It does not replace the angles.
+- **Profile**: Read the project profile: the skill next to this one whose `metadata.repos` lists the origin's `owner/repo`. Pass its **review** file to the reviewers together with the attack angles. The profile adds project-specific targets and check commands. It does not replace the angles.
 
-## Fresh eyes rule
+## Two reviewers
 
-If the current session wrote the diff or discussed it in depth, do not review it inline. The purpose is to avoid the author's blind spots. Delegate to a read-only `Explore` agent (thoroughness: very thorough). Give the agent the repo path and branch, the scope command, the intent summary, the constraints, the attack angles below and the output schema below. If the session is cold (you were invoked only to review someone else's diff), review inline.
+Always run two independent reviewers in parallel, with the same brief:
 
-**The reviewer agent does not write the file.** `Explore` has no `Write` or `Edit` tool at all. If you tell it to save the review, it fails or improvises a shell heredoc. Tell it to return the JSON as its final message and nothing else. This session saves the file as **Output** below describes. Fresh eyes is about who *analyzes* the diff. The parent only writes back a payload that it did not reason about, so the author's mental model does not leak into the review. The global instructions route adversarial review here, so this choice is the documented one.
+1. **Same model**: a fresh, read-only agent on the model of the current thread. A fresh agent does not share the author's blind spots.
+2. **Other family**: a fresh, read-only agent on a different model family. A model that reviews the output of its own family shares its blind spots. For a Claude thread, use a non-Claude model through Copilot. For a Copilot or Bob thread, use Claude.
 
-**Model selection.** Pick the agent's model by review complexity, and tell the user your choice:
+Never review inline, and never hard-code a model name. Discover the available providers and models at run time. [second-opinion.md](second-opinion.md) gives the mechanics for each host: discovery, launch, the read-only guard and the fallback.
 
-- `opus`: the default for anything non-trivial. This includes security and trust-boundary changes, auth or credential paths, concurrency, data migrations, cross-layer diffs (backend + frontend) and diffs that touch more than a handful of files.
-- `sonnet`: trivial reviews only. These are small, mechanical, single-concern diffs (rename, config tweak, isolated test change, copy edits) where the correctness question is shallow.
+**The brief.** Give both reviewers the repo path and branch, the scope command, the intent, the constraints, the profile's review file, the attack angles and the output schema below. Tell each reviewer to return only the `findings` and `non_issues` JSON as its final message, and to write no files. This session saves the review file, as **Output** describes. The reviewers do the analysis. This session only merges and saves what they return, so the author's mental model does not leak into the review.
 
-When in doubt, use `opus`. A missed blocker costs more than the model difference.
+**Merge.** Take the union of the two results. Two findings are the same when they name the same file, their lines are within 3 of each other, and they make the same claim. Keep one entry for them, with `"sources": ["same-model", "other-family"]`. Keep every other finding with the one source that found it. Then verify the merged list once, as **Verification standard** describes. Report the findings that both sources found first.
 
-### Second opinion inside a T3 Code thread
-
-Whenever you delegate to `Explore`, and the session runs inside T3 Code (the `delegate_task` tool is present), also run a second reviewer on a different model family. A model that reviews the output of its own family shares its blind spots. A different family breaks them. Skip the second reviewer when the brief says "single-model" or when the diff is trivial (the same threshold that selects `sonnet`).
-
-Launch the Copilot child in the same turn as the `Explore` agent. Use the identical brief and the identical "return only the JSON array" instruction, and add this line: "STRICTLY READ-ONLY: do not create or modify files, and run no state-changing git commands." Call `delegate_task` with `mode: "async"`, a `clientRequestId` that is unique for each review round, and this target:
-
-```json
-{
-  "providerInstanceId": "acpRegistry_github_copilot",
-  "model": "gpt-6-luna",
-  "options": {
-    "reasoning_effort": "high",
-    "allow_all": "on",
-    "mode": "https://agentclientprotocol.com/protocol/session-modes#agent"
-  }
-}
-```
-
-Keep `allow_all` on. If it is off, the unattended child blocks on approval prompts. Unlike `Explore`, the child has no tool-level read-only guarantee. So, before you launch it, record `git status --short` in the reviewed checkout. Record the returned `taskId`. The completion notification arrives on its own, so do not poll.
-
-- **Safety check.** When the child returns, run `git status --short` in the reviewed checkout. If anything changed that was clean before, report it to the user as a finding of its own before you use the review. Do not revert it yourself.
-- **Merge.** Take the union of the two arrays. Two findings are the same when they name the same file, their lines are within 3 of each other, and they make the same claim. Keep one entry for them and set `"sources": ["claude", "copilot"]`. Otherwise keep both findings, each with a single-element `sources`. Then verify the merged list once, as the **Verification standard** section describes. Verify a finding with two sources like any other, but report it first in the written review.
-- **Failure.** If the child fails, times out or returns anything that is not a JSON array, say so in the review header. Then continue with the Claude findings alone. Never block the review on the second pass.
+**Fallback.** Sometimes no second model family is available, or the other-family reviewer fails, times out or returns invalid JSON. Then record the reason in `reviewers`, and say it in your reply to the user: "Second opinion: not run (<reason>)." Continue with the same-model findings. Never skip the second opinion silently, and never block the review on it.
 
 ## Attack angles
 
@@ -99,17 +77,17 @@ Every finding needs a concrete failure scenario ("caller sends X → Y happens")
 
 ## Output
 
-Reviews go in the checkout's evidence store, under `.evidence/reviews/`. First, set up the store with the `evidence` skill. The setup is idempotent, so run it whether or not a ticket flow already did. This way a ticket's validation, captures and reviews sit under one key, and the review survives when the worktree is pruned.
+Reviews go in the checkout's evidence store, under `.evidence/reviews/`. First, set up the evidence store with the `evidence` skill. The setup is idempotent, so run it whether or not a ticket flow already did. This way a ticket's validation, captures and reviews sit under one key, and the review survives when the worktree is pruned.
 
 Write the JSON to a UTC-timestamped file. Then point `latest.json` at it, so that a later author session finds the current review without globbing and sorting:
 
 ```sh
-TS="$(date -u +%Y%m%dT%H%M%SZ)"   # seconds, not minutes — two reviews of one diff collide otherwise
+TS="$(date -u +%Y%m%dT%H%M%SZ)"   # seconds, not minutes; reuse the TS of the brief (second-opinion.md)
 # write the JSON to .evidence/reviews/$TS.json, then:
 ln -sfn "$TS.json" .evidence/reviews/latest.json
 ```
 
-Then tell the user the verdict, the path and a short prose summary of the top findings (severity, file:line, one-line claim). Do not restate the full JSON in prose.
+Then tell the user the verdict, the path, the models that ran and a short prose summary of the top findings (severity, file:line, one-line claim). Do not restate the full JSON in prose.
 
 Rank findings with the most severe first. Severity levels:
 
@@ -122,10 +100,14 @@ Derive the verdict. Never choose it. The verdict is `block` if any finding is a 
 ```json
 {
   "schema": "adversarial-review/v1",
-  "reviewed_at": "2026-09-02T14:30:00Z",
+  "reviewed_at": "<UTC timestamp, ISO 8601>",
   "scope": { "repo": "<path>", "target": "<diff command or PR ref>", "files": ["<changed files>"] },
   "intent": "<one-paragraph summary of what the diff claims to do>",
   "verdict": "block | concerns | clean",
+  "reviewers": [
+    { "role": "same-model", "model": "<model id that the host reported>", "status": "ok" },
+    { "role": "other-family", "model": "<model id, or null>", "status": "ok | failed | unavailable", "note": "<reason when the status is not ok>" }
+  ],
   "findings": [
     {
       "id": "F1",
@@ -138,7 +120,7 @@ Derive the verdict. Never choose it. The verdict is `block` if any finding is a 
       "failure_scenario": "<concrete input/state → wrong outcome>",
       "evidence": ["<file:line references traced to support the claim>"],
       "suggested_fix": "<minimal fix, one or two sentences>",
-      "sources": ["claude" | "copilot", ...]
+      "sources": ["same-model", "other-family"]
     }
   ],
   "non_issues": [
@@ -147,7 +129,7 @@ Derive the verdict. Never choose it. The verdict is `block` if any finding is a 
 }
 ```
 
-`sources` is optional. It is present only when the second-opinion pass ran.
+`sources` lists the role of each reviewer that found the finding. `reviewers` maps each role to the model that ran it. Older reviews can have no `reviewers` field, and `sources` values such as `"claude"` or `"copilot"`.
 
 ## Author handoff
 
@@ -170,7 +152,7 @@ Leave everything else in the file untouched. The review stays the reviewer's rec
 
 ## Rules
 
-- Stay read-only against the code, always. Never edit, commit, stage, or run anything that changes the repository or a running service. The review file and its evidence folder are the only writes, and only this session makes them. The reviewer agent writes nothing.
+- Stay read-only against the code, always. Never edit, commit, stage, or run anything that changes the repository or a running service. The review file in the evidence store is the only write, and only this session makes it. The reviewers write nothing.
 - Do not soften confirmed findings. Do not manufacture findings to look rigorous.
 - Stay in scope: review the diff and what it touches, not the pre-existing debt of the whole codebase. Pre-existing issues that the diff makes worse are in scope. Issues that the diff only sits near are not.
 - Respect the user's stated constraints verbatim (forbidden paths, running services).
