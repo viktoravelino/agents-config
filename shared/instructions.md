@@ -56,7 +56,7 @@ Do not put these things in commit messages or PR bodies:
 
 ## Delegation
 
-A skill's execution rules win over this section. Bob has no agents, so do the work directly in Bob.
+A skill's execution rules win over this section. This section wins over the orchestration defaults of a host. Bob has no agents, so do the work directly in Bob.
 
 You plan, delegate, verify and report. Subagents do edits, searches and exploration. "It is faster" and "I already have the context" are not reasons to skip delegation. You can do these things directly:
 - Answer without changes to files.
