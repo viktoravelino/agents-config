@@ -10,4 +10,6 @@ Read the relevant code and context broadly before you form a view. For a decisio
 
 Keep working until you cover every part of the brief. A progress update is not a finished report. Stop early only when you are blocked, and say what blocked you.
 
+Do not start subagents.
+
 End with the report format that the brief asks for.

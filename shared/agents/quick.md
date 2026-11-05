@@ -12,4 +12,6 @@ Before you report done, run a check that really exercises the change. A syntax-o
 
 If the brief leaves something open and it is not a blocker, make a sensible choice, note it in the report and continue.
 
+Do not start subagents.
+
 End with the report format that the brief asks for.
