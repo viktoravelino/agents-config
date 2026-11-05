@@ -1,153 +1,180 @@
-# Claude Code heartbeat — keeping the 5-hour blocks chained
+# Claude Code heartbeat
 
-Set up 2026-08-19. Runs as a `systemd --user` timer; `./install.sh` links the
-files in this directory into place, so edits here take effect immediately.
+The heartbeat keeps the 5-hour Claude usage blocks chained end to end. It runs
+as a `systemd --user` timer. `./install.sh` links the files in this directory
+into place, so edits here take effect immediately. The owner set it up on
+2026-08-19.
 
-## The mechanic being exploited
+## How the usage block works
 
-Claude's 5-hour usage block is a **fixed window, not a sliding one**. It starts on
-your first message after the previous block expired, and dies exactly 5h later.
+The 5-hour usage block is a fixed window, not a sliding one. It starts with
+your first message after the previous block expired. It ends exactly 5 hours
+later.
 
-So a heartbeat does *not* extend anything. What it buys you is that the moment a
-block expires, a new one is born within ≤5 minutes — blocks stay chained
-end-to-end, and resets never drift into the middle of a work session. You are
-always *ahead* of the cycle instead of discovering it mid-task.
+A heartbeat does not make a block longer. It starts a new block within 5
+minutes after the old block expires. So the blocks stay chained, and a reset
+does not move into the middle of a work session. You know the cycle before a
+task starts, not halfway through it.
 
-Two consequences that shape the design:
+This has two results for the design:
 
-- You don't need 288 pings/day. You need **one ping per block boundary**, ~5/day.
-- A ping must go through the **Claude Code CLI on subscription credentials**.
-  An API-key call to `api.anthropic.com` is separate billing and does nothing.
+- You need one ping for each block boundary, about 5 each day. You do not
+  need 288 pings each day.
+- The ping must go through the Claude Code CLI with subscription credentials.
+  An API-key call to `api.anthropic.com` has separate billing and does not
+  start a block.
 
 ## How it works
 
-A timer fires every 5 minutes, but the script is a **~25ms no-op** unless the
-block has actually expired:
+A timer starts the script every 5 minutes. The script does nothing (in about
+25 ms) unless the block has expired:
 
-1. Collect every `"timestamp"` from `~/.claude/projects/**/*.jsonl` modified in
-   the last 48h — that is the record of real session activity.
-2. Merge in our own ping log (see below).
-3. Replay blocks forward over the sorted timeline: *a new block begins at the
-   first message at or after `current_start + 5h`*. That single rule handles both
-   idle gaps and continuous back-to-back work.
-4. If `now < block_start + 5h`, exit silently. Otherwise fire one minimal ping.
+1. Collect each `"timestamp"` from the `~/.claude/projects/**/*.jsonl` files
+   that changed in the last 48 hours. These files record the real session
+   activity.
+2. Add the timestamps from the ping log (see below).
+3. Replay the blocks forward over the sorted timeline. A new block starts at
+   the first message at or after `current_start + 5h`. This one rule covers
+   idle gaps and continuous work.
+4. If `now < block_start + 5h`, exit without output. Otherwise, send one
+   small ping.
 
-**Why a separate ping log:** the heartbeat runs with `--no-session-persistence`,
-so its own pings never land in `~/.claude/projects`. Without recording them
-separately, step 3 would never see them and the script would re-ping every
-5 minutes forever.
+The script keeps its own ping log because it runs with
+`--no-session-persistence`. Its pings never go into `~/.claude/projects`.
+Without the log, step 3 would not see them, and the script would ping again
+every 5 minutes.
 
-### Why the ping is so cheap
+### Why the ping is small
 
-A naive `claude -p "hi"` loads the global `CLAUDE.md`, project `CLAUDE.md`,
-skills, and every MCP tool schema. With `claude-flow` connected that is a
-**~50,000 token** prompt for a two-token message. Measured on this machine:
+A plain `claude -p "hi"` loads the global `CLAUDE.md`, the project
+`CLAUDE.md`, the skills and every MCP tool schema. With `claude-flow`
+connected, that is a prompt of about 50,000 tokens for a two-token message.
+These are the measurements from this machine:
 
-| | normal session | heartbeat |
+| | Normal session | Heartbeat |
 |---|---|---|
-| input tokens | ~50,000 | **236** |
-| output tokens | — | ~400 |
+| Input tokens | about 50,000 | 236 |
+| Output tokens | n/a | about 400 |
 
-The flags that get you there:
+These flags make the ping small:
 
-- `--safe-mode` — disables CLAUDE.md, hooks, MCP, skills, plugins, custom agents,
-  **while keeping OAuth auth working**. Do *not* use `--bare`: it looks like the
-  right flag but forces `ANTHROPIC_API_KEY`/`apiKeyHelper` auth, which bills
-  separately and does nothing for the subscription block.
-- `--tools ""` — no tool schemas in the prompt. The single biggest saving.
-- `--system-prompt "..."` — replaces the multi-thousand-token default.
-- `--setting-sources ""` — ignore user/project/local `settings.json`.
-- `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` — belt and braces.
-  Note the empty config **must** contain the `mcpServers` key or the CLI errors.
-- Runs from an empty scratch cwd, so no project `CLAUDE.md` and no git status.
+- `--safe-mode` turns off CLAUDE.md, hooks, MCP, skills, plugins and custom
+  agents. OAuth authentication still works.
+- `--tools ""` removes the tool schemas from the prompt. This flag saves the
+  most tokens.
+- `--system-prompt "..."` replaces the long default system prompt.
+- `--setting-sources ""` ignores the user, project and local `settings.json`.
+- `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` is a second guard
+  against MCP servers. The empty config must contain the `mcpServers` key.
+  Without it, the CLI fails.
+- The script runs from an empty scratch directory. So no project `CLAUDE.md`
+  and no git status load.
 
-## Auth — the part that actually breaks
+Do not use `--bare`. It forces `ANTHROPIC_API_KEY` or `apiKeyHelper`
+authentication. That has separate billing and does not start a subscription
+block.
 
-**Headless runs need the long-lived token from `claude setup-token`, not the
-interactive OAuth grant.**
+## Authentication
 
-The interactive grant in `~/.claude/.credentials.json` can expire and silently
-stop refreshing, while `claude auth status` still cheerfully reports
-`loggedIn: true`. That was exactly the state here on 2026-08-19: the access token
-had expired on 2026-06-09 and every headless `claude -p` returned
+Headless runs need the long-lived token from `claude setup-token`. The
+interactive OAuth grant does not work for them.
+
+The interactive grant in `~/.claude/.credentials.json` can expire and stop
+refreshing without an error. `claude auth status` still reports
+`loggedIn: true`. This happened here: on 2026-08-19, the access token had
+been expired since 2026-06-09. Each headless `claude -p` returned
 `401 OAuth access token has expired`.
 
-`claude setup-token` writes an `sk-ant-oat01…` token to
-`~/.config/environment.d/claude-code.conf` as `CLAUDE_CODE_OAUTH_TOKEN`. The
-systemd user manager picks that file up at login, so services inherit it — but
-the script sources it explicitly anyway, so it also works under cron, a bare
-shell, or a stale user-manager environment. Verified working under `env -i`.
+`claude setup-token` writes an `sk-ant-oat01…` token as
+`CLAUDE_CODE_OAUTH_TOKEN` to `~/.config/environment.d/claude-code.conf`. The
+systemd user manager reads that file at login, so services get the token. The
+script also reads the file itself. So it also works under cron, in a bare
+shell, or with an old user-manager environment. A test under `env -i`
+confirmed this.
 
-> That conf file is created world-readable (`664`). `chmod 600` it.
+> `claude setup-token` creates that file with mode `664`, so all users can
+> read it. Run `chmod 600` on it.
 
 ## Install on a new machine
 
-```bash
-claude setup-token          # required first — see Auth below
-./install.sh                # link, enable linger, start the timer
-```
+1. Create the long-lived token (see Authentication above):
 
-```
-./install.sh --dry-run      # show what would change, touch nothing
+   ```bash
+   claude setup-token
+   ```
+
+2. Link the files, turn on linger and start the timer:
+
+   ```bash
+   ./install.sh
+   ```
+
+Other options:
+
+```bash
+./install.sh --dry-run      # show what would change, change nothing
 ./install.sh --uninstall    # stop the timer and remove the links
 ```
 
-The installer refuses to proceed without a long-lived token, tightens the
-permissions on the token file, and finishes by running the heartbeat once so you
-see it working. Existing real files are backed up with `.pre-agents-config-bak`
-before linking.
+The installer stops when there is no long-lived token. It sets the
+permissions of the token file to 600. At the end, it runs the heartbeat once,
+so you can see that it works. Before it makes a link, it backs up a real file
+at that path with the suffix `.pre-agents-config-bak`.
 
-Dependencies: `jq`, `flock`, GNU `find`, `systemd` — all standard on Ubuntu.
+Dependencies: `jq`, `flock`, GNU `find` and `systemd`. Ubuntu has all of
+them.
 
-## Operating it
+## Operation
 
 ```bash
-systemctl --user list-timers claude-heartbeat.timer   # when is the next tick
-journalctl --user -u claude-heartbeat -f              # watch it
-claude-heartbeat                                      # dry run, no-ops if block is live
-claude-heartbeat --force                              # force a real ping
+systemctl --user list-timers claude-heartbeat.timer   # time of the next run
+journalctl --user -u claude-heartbeat -f              # follow the log
+claude-heartbeat                                      # does nothing while the block is live
+claude-heartbeat --force                              # send a real ping now
 ```
 
-State lives in `~/.local/state/claude-heartbeat/` (`pings`, `lock`, `cwd`).
+The state is in `~/.local/state/claude-heartbeat/` (`pings`, `lock`, `cwd`).
 
-For quiet hours, change the timer's `OnCalendar=*:0/5` to `OnCalendar=06..23:0/5`.
+For quiet hours, change `OnCalendar=*:0/5` in the timer to
+`OnCalendar=06..23:0/5`.
 
-## Gotchas found the hard way
+## Known problems and their fixes
 
-- **`find` is shadowed.** Claude Code injects a `find` shell function that shims
-  to `bfs`, which rejects relative `-newermt '48 hours ago'` timestamps. Shell
-  functions don't leak into scripts, but the script calls `/usr/bin/find`
-  explicitly so an exported one can't break it.
-- **`Persistent=true` matters on a laptop.** cron silently skips ticks missed
-  while suspended; a systemd timer with `Persistent=true` fires on resume. This
-  is the main reason to prefer a timer over `crontab`.
-- **`flock`** stops a hung invocation stacking up behind the next tick.
-- **Don't host this in CI.** GitHub Actions would mean shipping a live
-  subscription token to a runner.
+- Claude Code adds a `find` shell function that calls `bfs`. `bfs` rejects
+  relative timestamps such as `-newermt '48 hours ago'`. Shell functions do
+  not go into scripts, but an exported function can. So the script calls
+  `/usr/bin/find` directly.
+- On a laptop, `Persistent=true` is important. cron skips the runs that it
+  missed during suspend, and it does not tell you. A systemd timer with
+  `Persistent=true` runs when the laptop resumes. This is the main reason to
+  use a timer and not `crontab`.
+- `flock` stops a run that hangs from blocking the next runs.
+- Do not run the heartbeat in CI. GitHub Actions would need a live
+  subscription token on a runner.
 
-## Unverified assumption
+## Assumption not tested
 
-That a **Haiku** heartbeat opens the same account-wide 5h block that Opus work
-draws from. That's how the unified session window is documented to behave, but no
-local file exposes a reset timestamp, so it can't be proven offline. Check
-`/usage` in a session after a boundary; if the block start doesn't line up with a
-heartbeat, change `--model haiku` to `sonnet` in the script.
+The heartbeat uses Haiku. The assumption is that a Haiku ping starts the same
+account-wide 5-hour block that Opus work uses. The documentation says that the
+unified session window works this way. But no local file shows a reset time,
+so you cannot prove it offline. To check it, run `/usage` in a session after a
+block boundary. If the block start does not match a heartbeat, change
+`--model haiku` to `sonnet` in the script.
 
-## Policy note
+## Usage policy
 
-At ~5 pings/day this is indistinguishable from normal use. A naive `*/5` cron
-that really pings 288 times/day looks like what it is — farming window
-boundaries — and sits in a grey area of Anthropic's usage policy. Another reason
-the guard is the design, not an optimisation.
+At about 5 pings each day, the heartbeat looks like normal use. A plain
+`*/5` cron job that sends 288 pings each day looks like abuse of the window
+boundaries. The Anthropic usage policy does not clearly allow that use. This is one more reason why the expiry check is part of the design.
 
 ## Files
 
-| in this repo | linked to |
+| In this repo | Linked to |
 |---|---|
 | `claude-heartbeat` | `~/.local/bin/claude-heartbeat` |
 | `claude-heartbeat.service` | `~/.config/systemd/user/` |
 | `claude-heartbeat.timer` | `~/.config/systemd/user/` |
-| `install.sh` | — |
+| `install.sh` | not linked |
 
-State (ping log, lock, scratch cwd) lives in
-`~/.local/state/claude-heartbeat/` and is left alone by `--uninstall`.
+`--uninstall` does not remove the state (ping log, lock and scratch
+directory) in `~/.local/state/claude-heartbeat/`.
