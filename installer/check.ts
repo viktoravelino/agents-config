@@ -2,10 +2,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import { parseFrontmatter, str, strList } from "./frontmatter.ts";
 
-export type Finding = { level: "FAIL" | "WARN"; path: string; reason: string };
-
-/** Skills copied from an upstream repo. Their problems are warnings, not failures. */
-const vendoredSkills = new Set(["use-railway"]);
+/** One problem found in the repo. `path` is relative to the repo root. */
+export type Finding = { level: "FAIL"; path: string; reason: string };
 
 /** Allowed skill names. Bob and VS Code skip skills that break this rule. */
 const skillNamePattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -141,16 +139,14 @@ function checkMarketplace(root: string, fail: Report) {
 /** Checks skills, agents and the MCP plugin under `root`. Returns all findings. */
 export function checkRepo(root: string): Finding[] {
   const findings: Finding[] = [];
-  const failAt = (level: Finding["level"]): Report => (path, reason) =>
-    findings.push({ level, path: relative(root, path) || ".", reason });
-  const fail = failAt("FAIL");
-  const warn = failAt("WARN");
+  const fail: Report = (path, reason) =>
+    findings.push({ level: "FAIL", path: relative(root, path) || ".", reason });
 
   const skillsDir = join(root, "shared", "skills");
   const skills = listDirs(skillsDir);
   const skillNames = new Set(skills);
   for (const skill of skills) {
-    checkSkill(join(skillsDir, skill), skillNames, vendoredSkills.has(skill) ? warn : fail);
+    checkSkill(join(skillsDir, skill), skillNames, fail);
   }
 
   const agentsDir = join(root, "shared", "agents");
@@ -168,12 +164,9 @@ export function checkRepo(root: string): Finding[] {
 /** Prints findings and returns the exit code. */
 export function report(findings: Finding[]): number {
   for (const { level, path, reason } of findings) console.log(`${level} ${path}: ${reason}`);
-  const failures = findings.filter((f) => f.level === "FAIL").length;
-  const warnings = findings.length - failures;
+  const failures = findings.length;
   console.log(
-    failures === 0
-      ? `check passed (${warnings} warning${warnings === 1 ? "" : "s"})`
-      : `check failed: ${failures} failure${failures === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}`,
+    failures === 0 ? "check passed" : `check failed: ${failures} failure${failures === 1 ? "" : "s"}`,
   );
   return failures === 0 ? 0 : 1;
 }

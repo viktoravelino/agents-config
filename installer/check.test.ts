@@ -79,8 +79,3 @@ test("marketplace plugin name differs from plugin.json", () => {
   put("shared/plugins/mcp/.claude-plugin/plugin.json", JSON.stringify({ name: "other" }));
   expect(lines()).toEqual([expect.stringContaining("name does not match marketplace entry")]);
 });
-
-test("vendored skill problems are warnings", () => {
-  skill("use-railway", "name: wrong\ndescription: Railway.");
-  expect(lines()).toEqual([expect.stringMatching(/^WARN shared\/skills\/use-railway\/SKILL.md/)]);
-});

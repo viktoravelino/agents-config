@@ -1,6 +1,6 @@
 ---
 name: html-plan
-description: Direct-invocation specialist for clear, self-contained HTML plans. It keeps the source material and improves hierarchy, sequence, ownership, dependencies, and reviewability. The user invokes it explicitly with /html-plan; the agent never loads it automatically.
+description: Turns plan notes or a plan file into a clear, self-contained HTML plan. It keeps the source material and improves hierarchy, sequence, ownership, dependencies and reviewability. Use when the user asks for an HTML plan or runs /html-plan.
 argument-hint: "[plan file or notes to turn into a plan]"
 disable-model-invocation: true
 ---

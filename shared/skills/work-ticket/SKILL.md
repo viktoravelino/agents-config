@@ -1,6 +1,6 @@
 ---
 name: work-ticket
-description: Do the work that a validated ticket asks for. Resume the worktree and verdict that validate-ticket left, implement against the recorded scope and acceptance criteria, capture the matching after-evidence, and put the diff through a fresh-eyes adversarial review before you hand it back for approval. Use when the user says "let's fix it", "implement this", or "start the work" on a ticket that has already been validated.
+description: Does the work that a validated ticket asks for. Resumes the worktree and verdict that validate-ticket left, implements against the recorded scope and acceptance criteria, captures the matching after-evidence, and puts the diff through an adversarial review before it hands the change back for approval. Use when the user says "let's fix it", "implement this", or "start the work" on a ticket that has already been validated.
 argument-hint: "[ticket key]"
 metadata:
   requires: [validate-ticket, evidence, dev-servers, file-pr, adversarial-review]
@@ -19,22 +19,20 @@ the repro and the fix scope are already in context. Use them. Do not re-read the
 re-trace the code, or re-run the repro from scratch. That wastes the handoff.
 
 A cost of the same session is that you inherit your own blind spots. For this reason the
-adversarial review at step 5 is not optional, and it never runs inline.
+adversarial review at step 5 is not optional.
 
 ## Hard rules (read first)
 
 - **Never commit, push, or open a PR** before the user has reviewed the diff and said to.
 - **Never mutate the Jira ticket.** Offer the transition and the comment. Do not apply them.
-- **Never review your own diff inline.** Always delegate the adversarial review.
 - **Stay inside the validated scope.** Report what you find outside it. Do not fix it.
-- **Never disturb the user's environment** when you run the app (see `dev-servers`).
-- **Capture before/after evidence the same way**, or do not present it as a pair.
+- **Follow the hard rules of `dev-servers` and `evidence`** for the running app and for captures.
 - **Say which acceptance criteria are *not* met.** A partial result that you state plainly is
   better than a complete-sounding result that is not true.
 
-## 1. Resume the workspace
+## 1. Resume the worktree
 
-**Warm session** (this session ran the validation): confirm that the workspace is still as
+**Warm session** (this session ran the validation): confirm that the worktree is still as
 you left it. You are in the worktree, you are on the validation branch, and the base
 has not moved. Then go.
 
@@ -77,10 +75,6 @@ Before you touch anything, state the plan in a few lines: the files from `scope`
 and anything you intend to do that the validation did not expect. Keep it short. This is a
 checkpoint, not a design doc.
 
-The diff stays inside the validated scope. If you find something real but out of scope
-during the work, note it for the user. Do not fix it silently. An unrelated cleanup in the
-diff makes a reviewable diff unreviewable.
-
 `tests_affected` is part of the work. Update the tests that encode the old assumption. Add a
 test that would have caught the problem that the ticket describes. Write focused tests only,
 with no smoke-test padding.
@@ -90,14 +84,9 @@ with no smoke-test padding.
 **Default: do it inline.** The session holds the trace. A single pass is the fastest correct
 path, and delegation costs more context than it saves.
 
-**Delegate only for real breadth**: independent areas that can proceed in parallel, such
-as a backend change and a frontend change that meet only at a payload shape. When you
-delegate:
-
-- State file ownership up front, for each agent, so that agents cannot collide.
-- Give each agent the diagnosis and the acceptance criteria, not only "fix the bug".
-- First fix the contract between the agents yourself (the schema, the payload field, the
-  type). Then they build against something settled and do not negotiate.
+**Delegate only for real breadth**, such as a backend and a frontend change that meet only
+at a payload shape. Settle the contract between the agents first (schema, payload, type).
+Give each agent its own files, the diagnosis and the acceptance criteria.
 
 For a **spike** ticket the deliverable is a written answer in `.evidence/`, not a diff.
 Answer the question, show what you ran, and stop.
@@ -110,33 +99,18 @@ Verify first, then capture evidence. Evidence of a broken change has no value.
 - Run the affected tests, and run lint and type checks scoped to the changed files.
 - **Re-run the probe from `.evidence/probes/`.** For a bug this is the strongest signal you
   have. The script that reproduced the failure must now pass, unchanged. If it is cheap and
-  deterministic, promote it into the real test suite. A repro script that becomes a
-  regression test is worth more than either one alone.
+  deterministic, promote it into the real test suite.
 
-Then capture `.evidence/after/` as the matching half of every artifact in `.evidence/before/`.
-Use the matching rules in `evidence`: the same scripts from `probes/`, the same viewport,
-route, and data, and the stash procedure if a `before/` artifact is missing. Run the app as
-`dev-servers` describes.
+Then capture `.evidence/after/` as the matching half of every artifact in `.evidence/before/`,
+with the matching rules in `evidence`.
 
-## 5. Adversarial review: always, always fresh
+## 5. Adversarial review
 
-Invoke the `adversarial-review` skill on the diff. This session wrote the change, so
-`adversarial-review`'s fresh-eyes rule and model choice apply. Delegate the review to a read-only
-agent. Never run it inline.
-
-Give the reviewer the intent (what the ticket asked for and what the diff claims to do) and
-the constraints (the running services and ports that it must not disturb). Persist the
-findings that it returns into the ticket's evidence store, as the Output section of
-that skill describes.
-
-Then work through the findings in order. Record an outcome for each one in that same file:
-`fixed`, `disputed`, or `acknowledged`, as the skill's author-handoff contract says.
-Resolve every blocker, or dispute it explicitly with code references. Never let a blocker
-end up quietly `acknowledged`. After you apply fixes, re-run the affected tests and refresh
-any after-evidence that a fix invalidated.
-
-Report the verdict and what you did about it. Do not rewrite a `disputed` finding as
-agreement to make the report tidy.
+- Run the `adversarial-review` skill on the diff. Never run it inline.
+- Give it the intent (what the ticket asks and what the diff claims) and the constraints (services and ports to leave alone).
+- Act on the findings as its **Author handoff** section says, and record an outcome for each one.
+- Never leave a blocker `acknowledged`. Fix it, or dispute it with `file:line` evidence.
+- After fixes, run the affected tests again and refresh any after-evidence that a fix changed.
 
 ## 6. Hand back
 
@@ -157,5 +131,4 @@ When the user says to file it, use the `file-pr` skill. Two things carry over fr
 - **Put before/after in the two-column table**, with real alt text that describes what each
   image shows. This is the reason for the paired capture in step 4.
 
-The Jira ticket is still untouched. Offer the status transition and the comment to the user
-so that they can apply them. Do not apply them.
+Offer the Jira status transition and the comment to the user. Do not apply them.

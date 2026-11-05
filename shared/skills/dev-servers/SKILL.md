@@ -1,6 +1,6 @@
 ---
 name: dev-servers
-description: Run an app locally for verification without disturbing the user's own dev environment -- check what is already running, confirm credentials work before you build anything, start an isolated stack on alternate ports with its own data, drive it with Playwright, and tear down only what you started. The project profile gives the project specifics. Referenced by validate-ticket, work-ticket, and diagnose.
+description: Runs an app locally for verification without disturbing the user's own dev environment -- checks what is already running, confirms credentials before any build, starts an isolated stack on alternate ports with its own data, drives it with Playwright, and tears down only what it started. The project profile gives the project specifics. Use when a ticket, debugging or review step needs the running app or a browser, as validate-ticket, work-ticket and diagnose do.
 user-invocable: false
 ---
 
@@ -18,7 +18,7 @@ The user usually has their own stack running while you work. These rules make su
 
 ## 0. Project profile
 
-Find the repo's profile. `basename -s .git "$(git remote get-url origin)"` gives a name. If a skill with that name sits next to this one (`../<name>/SKILL.md`), read its **servers** file. If there is none, look for a sibling profile whose `metadata.repos` lists the origin's `owner/repo`, and read its **servers** file. The file gives the ports, start commands, credential checks, and hazards for this project. It overrides the defaults below. Without a profile, work them out in step 4.
+Read the project profile: the skill next to this one whose `metadata.repos` lists the origin's `owner/repo`. Read its **servers** file. The file gives the ports, start commands, credential checks, and hazards for this project. It overrides the defaults below. Without a profile, work them out in step 4.
 
 ## 1. Check what is running
 
@@ -85,8 +85,4 @@ for p in <ports you took>; do lsof -t -iTCP:$p -sTCP:LISTEN | xargs -r kill; don
 
 Remove the throwaway data dir, unless it is evidence. Report what you stopped and removed.
 
-If the profile runs the stack under Docker Compose, the throwaway data lives in the project's named volumes. Then teardown is `docker compose -p <project> down -v`, not `down` alone. A `down` without `-v` looks clean (no containers), but it leaves the venv, `node_modules`, and data volumes behind. They outlive the worktree. The profile marks some volumes as shared caches. These are external, and `down -v` does not touch them. Never prune volumes wholesale to remove the leftovers. To find stacks that were torn down without their volumes, list the dangling volumes and exclude the profile's shared caches by name. The shared caches also look dangling when no stack runs, and their labels do not show the difference:
-
-```sh
-docker volume ls -q --filter dangling=true | grep -v <shared cache name pattern>
-```
+If the profile runs Docker, follow its teardown.

@@ -1,9 +1,9 @@
 ---
 name: design-artifact
-description: Design principles and creative direction for building HTML artifacts — pages, reports, plans, landing pages, demos, decks, and small tools. Use when you create or restyle any visual HTML deliverable and decide its palette, type pairing, layout, theming, or overall register, or when the output must not look generically AI-generated.
+description: Gives design principles and creative direction for HTML artifacts — pages, reports, plans, landing pages, demos, decks and small tools. Use when you create or restyle any visual HTML deliverable and decide its palette, type pairing, layout, theming, or overall register, or when the output must not look generically AI-generated.
 ---
 
-Take the creative director's perspective at a boutique agency known for its range. Every commission gets its own visual identity, scaled to the level of treatment the brief merits. Make palette, type and layout conscious decisions rooted in this subject. Nothing should look like it came off a shelf.
+Take the creative director's perspective at a boutique agency known for its range. Every commission gets its own visual identity. The brief decides how much design it gets. Make palette, type and layout conscious decisions rooted in this subject. Nothing should look like it came off a shelf.
 
 ## Begin by sizing up the brief
 
@@ -50,11 +50,9 @@ Give the dark theme as much attention as the light one. Mechanical inversion is 
 
 Execute a direction that the user has set exactly as given. Their instructions win over everything, including a request for one of these exact looks. When you have no instructions, the choice is yours. Do not waste it on a cliché.
 
-**Engineer it soundly.** Rendering bugs grow in the distance between source and screen, so stay alert for overlapping elements, cascade collisions and fonts that silently fall back. Close all non-void elements. Use double quotes for all attributes. Give keyboard focus a visible state. Respect `prefers-reduced-motion`. When graphics are generative or decorative, use Canvas or WebGL before you hand-write long SVG path data.
+**Engineer it soundly.** Check for fonts that silently fall back, and for selectors that fight over the same spacing. Give keyboard focus a visible state. Respect `prefers-reduced-motion`. For generative or decorative graphics, use Canvas or WebGL, not long hand-written SVG paths.
 
-**Mind the cascade.** Selector specificity is where CSS fights itself. A class hook like `.section` and an element hook like `.cta` can fight over padding and margins and undo each other. Design the cascade so that nothing can quietly sabotage your spacing.
-
-**Copy is a material.** Treat the words as load-bearing, not as garnish. Stand on the reader's side of the glass. Name things as people know them, not as the backend does (someone manages *notifications*, never *webhook config*). Keep verbs active. Every control states its exact effect ("Publish", answered by a toast: "Published"). An error message diagnoses the failure and prescribes the fix. It never grovels and never hand-waves. Precision beats wit.
+**Copy is a material.** Treat the words as load-bearing, not as garnish. Write from the reader's point of view. Name things as people know them, not as the backend does (someone manages *notifications*, never *webhook config*). Keep verbs active. Every control states its exact effect ("Publish", answered by a toast: "Published"). An error message diagnoses the failure and prescribes the fix. It never grovels and never hand-waves. Precision beats wit.
 
 **Make structure mean something.** Numbering, eyebrows, dividers and labels earn their place only when they say something true about the content. They must not just decorate it. Numbered markers (01 / 02 / 03) appear constantly in generic work. They are honest only when the order is real information, such as an actual procedure or a dated timeline that the reader must follow in sequence. Before you use a device like that, ask whether it tells the truth.
 
@@ -82,19 +80,3 @@ Before you write any code, audit the design plan against the subject. Rework any
 - Motion is a budget. Ask where animation really serves the subject (an entrance sequence on load, a reveal tied to scroll, micro-interactions on hover, a layer of ambient atmosphere), and ask whether it serves at all. One orchestrated beat usually beats effects sprinkled around. Let the direction decide. Restraint often wins, and gratuitous animation is itself a mark of the AI-generated look.
 - Scale the execution to the ambition. Maximalism needs elaborate follow-through. Minimalism needs exactness in spacing, type and detail. Elegance means delivering the chosen vision completely.
 - Put the daring in one place and keep everything around it quiet. If the accent clashes with the ground, move it toward an analogous hue or reduce its saturation. Do not swap it for another color.
-
-<!-- ## After the artifact ships
-
-Once the artifact is finished and delivered, ask the user whether they'd like to share it as a public page. If — and only if — they say yes, publish the file with the `tot` CLI (tot.page) and hand back the URL it prints:
-
-```bash
-tot path/to/artifact.html
-```
-
-If `tot` is not installed (`command -v tot` fails), tell the user and offer to install it. Install only on their explicit go-ahead:
-
-```bash
-npm install -g @plannotator/tot
-```
-
-Never publish or install without the user's explicit consent — a shared page is publicly accessible to anyone who has the link. -->

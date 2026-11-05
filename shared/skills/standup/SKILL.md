@@ -1,7 +1,9 @@
 ---
 name: standup
-description: Draft a daily standup update (yesterday / today / blockers) from recent GitHub and Jira activity. Use when the user asks for a standup, a daily update, or "what did I do yesterday".
+description: Drafts a daily standup update (yesterday / today / blockers) from recent GitHub and Jira activity. Use when the user asks for a standup, a daily update, or "what did I do yesterday".
 argument-hint: "[since date | all repos]"
+metadata:
+  requires: [acli-jira]
 ---
 
 # Standup
@@ -11,10 +13,10 @@ Pull recent activity and turn it into a short update that the user can paste. Th
 ## Window and scope
 
 - **Since**: the previous working day (Friday when today is Monday), unless the user gives a date. Use it as `<since>` (`YYYY-MM-DD`) below.
-- **Scope**: work, as the project profiles define it. Find the profiles next to this skill:
+- **Scope**: work, as the project profiles define it. Find the profiles next to this skill. `<skill-dir>` is the absolute path of the folder that holds this `SKILL.md`, as the host loaded it:
 
   ```sh
-  grep -l 'kind: project-profile' ../*/SKILL.md
+  grep -l 'kind: project-profile' "<skill-dir>"/../*/SKILL.md
   ```
 
   The **workflow** file of each profile has a "Standup scope" section with a GitHub org and a Jira project. Run the queries below once for each profile. If there are no profiles, ask the user which org and Jira project count as work.

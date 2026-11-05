@@ -160,26 +160,24 @@ project's profile.
 | Kind | Skills |
 | --- | --- |
 | Workflows | `validate-ticket`, `work-ticket`, `diagnose`, `adversarial-review`, `file-pr`, `request-review`, `standup` |
-| Shared helpers | `evidence` (where proof lives), `dev-servers` (running an app in isolation), `git-worktree`, `acli-jira` |
+| Shared helpers | `evidence` (where proof lives), `dev-servers` (running an app in isolation), `git-worktree`, `acli-jira`, `notes` |
 | Project profiles | `langflow` |
 | Documents | `design-artifact`, `html-plan` |
 
-Helpers and profiles set `user-invocable: false`. Other skills pull them in, so
-they stay out of the `/` menu.
+`evidence`, `dev-servers` and the profiles set `user-invocable: false`. Other
+skills pull them in, so they stay out of the `/` menu.
 
 ### Project profiles
 
-A workflow skill resolves the repository's profile from its origin with
-`basename -s .git "$(git remote get-url origin)"`. It reads the sibling skill of
-that name if one exists, so `langflow-ai/langflow` and every worktree of it use
-`shared/skills/langflow/`. If no skill has that name, the workflow skill falls
-back to a profile whose `metadata.repos` lists the origin's `owner/repo`. This is
-how `WatsonOrchestrate/IBM-Langflow` finds the langflow profile. To add a
-project, create a folder named after the repository:
+A workflow skill reads the project profile: the sibling skill whose
+`metadata.repos` lists the origin's `owner/repo`. So `langflow-ai/langflow`, every
+worktree of it and `WatsonOrchestrate/IBM-Langflow` all use
+`shared/skills/langflow/`. To add a project, create a folder named after the
+repository, and list its `owner/repo` in `metadata.repos`:
 
 ```
 shared/skills/<repo>/
-  SKILL.md      index; frontmatter sets user-invocable: false and metadata.kind: project-profile
+  SKILL.md      index; frontmatter sets user-invocable: false, metadata.kind: project-profile and metadata.repos
   servers.md    ports, start commands, hazards      (read by dev-servers)
   review.md     stack, hot paths, read-only checks  (read by adversarial-review)
   workflow.md   base branches, review channel, ticket tracker, standup scope
@@ -191,10 +189,9 @@ gitignored files, as `acli-jira/boards.md` does.
 
 ## Skills from other repositories
 
-`use-railway` comes from `railwayapp/railway-skills`. When you copy a skill
-from another repository, add a line right after the frontmatter of its
-`SKILL.md`. The line names the source repo, path and commit. There is no sync
-tooling.
+When you copy a skill from another repository, add a line right after the
+frontmatter of its `SKILL.md`. The line names the source repo, path and commit.
+There is no sync tooling.
 
 ## T3 Code project files
 
@@ -240,7 +237,6 @@ Codex, GitHub Copilot and IBM Bob:
   same name.
 
 Each problem prints as `FAIL <path>: <reason>`, and the command exits with 1.
-Problems in `use-railway` print as `WARN`, because it comes from upstream.
 
 The GitHub Actions workflow `.github/workflows/check.yml` runs `bun test`,
 `bunx tsc --noEmit` and `bun run check`. It runs on each push to `main` and on
