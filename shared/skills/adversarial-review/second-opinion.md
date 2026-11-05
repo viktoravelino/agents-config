@@ -28,15 +28,26 @@ Use the same `TS` for the review file later. End the brief with these two lines:
 - "Return only a JSON object with `findings` and `non_issues` as your final message. Write no files."
 - "STRICTLY READ-ONLY: do not create or modify files, and run no state-changing git commands."
 
-## Launch on each host
+## Launch in T3 Code
+
+In T3 Code, the host does not matter. A Claude, Copilot or Bob thread uses the same path.
+
+1. Discover the models with `orchestrator_capabilities`, as **Pick the two models** describes.
+2. Launch both reviewers with `delegate_task` in the same turn. Set `mode: "async"`, `interactionMode: "plan"` and `role: "review"`. Give each reviewer a unique `clientRequestId` for each review round.
+3. **Same model**: omit `target`. The child inherits the provider and model of the thread.
+4. **Other family**: set `target.providerInstanceId` and `target.model` from the capabilities result, by the family rules in **Pick the two models**. Set high reasoning effort if the capabilities list it. Do not set `allow_all`.
+5. Pass the brief text as the prompt. After its two closing lines, add: "Do not propose a plan and do not ask for approval. Return the JSON directly as your final message."
+
+Each reviewer is a child thread that the user can open. Mention its link in the reply. Do not poll a reviewer. The host wakes the session when each reviewer finishes.
+
+## Launch outside T3 Code
 
 Start both reviewers in the same turn. Do not poll a reviewer. Wait for the host to report that it finished.
 
 ### Claude Code
 
 - **Same model**: a read-only `Explore` agent (thoroughness: very thorough). Pass the brief as its prompt. Set the `model` override to the model of the current thread, because `Explore` can default to a smaller model. `Explore` has no `Write` or `Edit` tool, so it cannot save the review. That is why it returns the JSON.
-- **Other family, in T3 Code**: call `delegate_task` with `mode: "async"` and a `clientRequestId` that is unique for each review round. Set `target.providerInstanceId` and `target.model` from the capabilities result. Set the options for an unattended run that the capabilities list (for Copilot: high reasoning effort, `allow_all` on, agent mode). If `allow_all` is off, the child blocks on approval prompts. Record the returned `taskId`.
-- **Other family, outside T3 Code**: run the Copilot CLI in the background:
+- **Other family**: run the Copilot CLI in the background:
 
   ```sh
   copilot -p "$(cat "$BRIEF")" -s --model <non-Claude model> --allow-all-tools --deny-tool=write
@@ -50,7 +61,7 @@ Start both reviewers in the same turn. Do not poll a reviewer. Wait for the host
   copilot -p "$(cat "$BRIEF")" -s --model <current model> --allow-all-tools --deny-tool=write
   ```
 
-- **Other family**: if the current model is Claude, run the same `copilot -p` command with a non-Claude model. Otherwise, use Claude. In T3 Code, call `delegate_task` with the Claude provider from the capabilities result. Elsewhere, run the Claude CLI:
+- **Other family**: if the current model is Claude, run the same `copilot -p` command with a non-Claude model. Otherwise, use Claude. Run the Claude CLI:
 
   ```sh
   claude -p "$(cat "$BRIEF")" \
@@ -70,7 +81,7 @@ Start both reviewers in the same turn. Do not poll a reviewer. Wait for the host
 
 ## Read-only guard
 
-`Explore` is read-only by its tool set. The other reviewers are not, because a shell can write. Before you launch them, record `git status --short` in the reviewed checkout. When each reviewer returns, run it again. If a file changed that was clean before, report it to the user as a finding of its own before you use the review. Do not revert it yourself.
+`Explore` is read-only by its tool set. The other reviewers are not, because a shell can write. In T3 Code, plan mode blocks edits, and the guard stays as a safety net. Before you launch any reviewer, record `git status --short` in the reviewed checkout. When each reviewer returns, run it again. If a file changed that was clean before, report it to the user as a finding of its own before you use the review. Do not revert it yourself.
 
 ## When a reviewer fails
 
