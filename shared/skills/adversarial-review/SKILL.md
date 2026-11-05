@@ -34,7 +34,7 @@ Also collect the items below. Ask only if you cannot get them any other way.
 Always run two independent reviewers in parallel, with the same brief:
 
 1. **Same model**: a fresh, read-only agent on the model of the current thread. A fresh agent does not share the author's blind spots.
-2. **Other family**: a fresh, read-only agent on a different model family. A model that reviews the output of its own family shares its blind spots. For a Claude thread, use a non-Claude model through Copilot. For a Copilot or Bob thread, use Claude.
+2. **Other family**: a fresh, read-only agent on a different model family. A model that reviews the output of its own family shares its blind spots. When the current model is Claude, use a non-Claude model through Copilot. Otherwise, use Claude.
 
 Never review inline, and never hard-code a model name. Discover the available providers and models at run time. [second-opinion.md](second-opinion.md) gives the mechanics for each host: discovery, launch, the read-only guard and the fallback.
 

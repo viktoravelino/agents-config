@@ -8,15 +8,15 @@
 2. Find the providers and models that the host offers now. Never use a model name from memory or from this file.
    - In T3 Code: call the orchestrator capabilities tool (`orchestrator_capabilities`). It lists each provider, its models and its options.
    - Elsewhere: check which CLIs exist with `command -v claude copilot bob`. Use the model list that the host shows. If the host cannot list its models, ask the user once which model to use.
-3. Pick the other-family model:
-   - Claude thread: a non-Claude model through Copilot. The Copilot default can be a Claude model, so always name the model explicitly.
-   - Copilot or Bob thread: Claude. The Claude CLI default model is a correct choice.
+3. Pick the other-family model by the family of the current model, not by the host:
+   - Current model is Claude (also in a Copilot thread): a non-Claude model through Copilot. The Copilot default can be a Claude model, so always name the model explicitly.
+   - Current model is not Claude: Claude. The Claude CLI default model is a correct choice.
    - Pick the strongest model of that family that the host lists.
 4. If no other family is available, use the fallback in `SKILL.md`.
 
 ## Write the brief once
 
-Write the brief to a file in the evidence store, so both reviewers get the same text:
+Set up the evidence store first, as the `evidence` skill describes. Then write the brief to a file in it, so both reviewers get the same text:
 
 ```sh
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -50,7 +50,7 @@ Start both reviewers in the same turn. Do not poll a reviewer. Wait for the host
   copilot -p "$(cat "$BRIEF")" -s --model <current model> --allow-all-tools --deny-tool=write
   ```
 
-- **Other family**: Claude. In T3 Code, use `delegate_task` with the Claude provider from the capabilities result. Elsewhere, run the Claude CLI:
+- **Other family**: if the current model is Claude, run the same `copilot -p` command with a non-Claude model. Otherwise, use Claude. In T3 Code, call `delegate_task` with the Claude provider from the capabilities result. Elsewhere, run the Claude CLI:
 
   ```sh
   claude -p "$(cat "$BRIEF")" \
