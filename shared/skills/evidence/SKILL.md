@@ -8,7 +8,7 @@ user-invocable: false
 
 A claim that something is broken or fixed is only as good as the proof behind it. This skill is the one place that says where the proof lives and what makes it trustworthy. The skills that reference it own *what* they capture. This skill owns *where* and *how*.
 
-## The store
+## The evidence store
 
 You can browse evidence at `.evidence/` in the checkout. The real bytes live under the **common** git dir, keyed by the checkout's directory name. This has three effects:
 
@@ -41,13 +41,16 @@ grep -qxF '.evidence' "$COMMON/info/exclude" 2>/dev/null || { mkdir -p "$COMMON/
 Why the setup is written this way:
 
 - It uses `--git-common-dir`, not `--git-dir`, because the per-worktree git dir dies with the worktree.
-- The exclude goes in the **common** `info/exclude`, because git ignores the per-worktree copy. It never goes in the repo's `.gitignore`. The pattern has no trailing slash. A trailing slash would match only directories and would miss the symlink. The real bytes need no exclude, because git does not track anything under `.git/`.
+- The exclude goes in the **common** `info/exclude`, because git ignores the per-worktree copy.
+- The exclude never goes in the repo's `.gitignore`.
+- The pattern has no trailing slash. A trailing slash matches only directories, so it misses the symlink.
+- The real bytes need no exclude, because git does not track anything under `.git/`.
 
 Outside a ticket worktree (for example a quick `diagnose` in the main checkout), use `/tmp/debug-<slug>/` instead. This way one-off probes do not pile up under the main checkout's key.
 
 ## Probes
 
-- Keep probes in `.evidence/probes/` (or in the `/tmp` folder above). Never put them in product code. Name each probe for what it checks.
+- Keep probes in `.evidence/probes/` (or in the `/tmp/debug-<slug>/` folder above). Never put them in product code. Name each probe for what it checks.
 - **Give a watchdog to anything that can loop, grow or hang, before its first run.** Use a timeout, an iteration cap, or an RSS limit with a hard exit. A probe must never be able to take the machine down.
 - For anything that needs a running app, follow `dev-servers`: use isolated ports, and never the user's running stack.
 - Use the smallest harness that still shows the behavior. Use an in-process script for a pure code path. Use the live app only when the behavior is visible only end to end.

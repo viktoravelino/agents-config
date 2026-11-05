@@ -2,6 +2,15 @@
 
 This file applies the generic rules in `dev-servers` to Langflow. There are two modes. Use **Docker mode** whenever `docker info` succeeds. Use **host mode** as the fallback. The credential check and the Playwright probe config are the same in both modes. The ports are different (see below).
 
+## Contents
+
+- Ports
+- Credential check
+- Docker mode (preferred): start, running things inside the stack, teardown
+- Host mode (fallback): hazards, dependencies, backend, frontend, teardown
+- Playwright
+- IBM-Langflow overlay
+
 ## Ports
 
 Host mode: backend `7861` (then `7862`, …), frontend `3001` (then `3002`, …). The user's own stack runs on `7860` and `3000`.

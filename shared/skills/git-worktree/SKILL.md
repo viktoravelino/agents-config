@@ -103,7 +103,7 @@ git branch -d <branch>                    # only if the user wants the branch go
 ```
 
 - If the worktree has uncommitted or unpushed work, show it and ask before you remove it. Never use `--force` or `rm -rf` on a worktree on your own.
-- If you started an isolated stack for the worktree (`dev-servers`), tear it down **before** you remove the directory. Remove its named volumes with it. A compose project keeps its venv, `node_modules`, and data volumes after the worktree is gone, and nothing else cleans them. The project profile's servers file has the exact derivation of the project name. For Langflow, the user's T3 stack is `langflow-<slug>-<port base>` and the agent stack is `langflow-agent-<slug>-<port base>`. Tear down only stacks that you started.
+- If you started an isolated stack for the worktree (`dev-servers`), tear it down **before** you remove the directory. Remove its named volumes with it. A compose project keeps its venv, `node_modules`, and data volumes after the worktree is gone, and nothing else cleans them. The project profile's servers file gives the compose project name. Tear down only stacks that you started.
 - The worktree's evidence stays after removal, because it lives under the common git dir. Say so if the user expects it to be gone.
 
 ## Prune

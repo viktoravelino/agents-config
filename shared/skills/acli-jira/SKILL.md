@@ -4,9 +4,7 @@ description: Manages Jira tickets with the acli CLI: search, view, create, edit,
 argument-hint: "[ticket key or what to do]"
 ---
 
-## Purpose
-
-Use this skill when you work with Jira. It covers reading tickets, creating new tickets, updating existing ones, searching with JQL, changing status, assigning, commenting, linking, and browsing projects and boards. `acli jira` manages Jira Cloud from the CLI.
+# Jira with acli
 
 **Before you create or change tickets, read [`boards.md`](boards.md) next to this file, if it exists.** It holds the conventions for the boards in use (project key, types, labels, statuses, custom fields). Git ignores it, and it stays local.
 
@@ -54,32 +52,10 @@ These limits are verified against acli 1.3.36 and the current reference docs:
 3. **View**: `acli jira workitem view PROJ-123 --json`. Then read the comments and links to see the full picture.
 4. **Create, edit, or transition** with the commands below.
 
-## Common JQL patterns
+## JQL notes
 
-```sh
-# All open tickets in a project
---jql "project = PROJ AND status != Done"
-
-# Tickets assigned to me
---jql "assignee = currentUser()"
-
-# Bugs created this week
---jql "project = PROJ AND type = Bug AND created >= startOfWeek()"
-
-# Tickets with a specific label
---jql "project = PROJ AND labels = backend"
-
-# Search by summary text
---jql "project = PROJ AND summary ~ \"search term\""
-
-# Children of an epic
---jql "parent = PROJ-100"
-
-# Recently updated
---jql "project = PROJ AND updated >= -7d ORDER BY updated DESC"
-```
-
-Priority names are also specific to each project (`High/Highest` on some, `Critical/Major/Minor` on others).
+- Children of an epic or parent: `--jql "parent = PROJ-100"`.
+- Priority names are also specific to each project (`High/Highest` on some, `Critical/Major/Minor` on others).
 
 ## Examples
 
