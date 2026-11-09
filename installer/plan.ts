@@ -149,6 +149,8 @@ export function computePlan({ desired, held, notices: wantedNotices }: Wanted, o
         if (record) kept.push(record);
       } else if (current.value === undefined) actions.push({ type: "create", desired: d });
       else if (isDeepStrictEqual(current.value, d.value)) unchanged.push(d);
+      // Still the value we wrote: the repo moved on, so follow it. Otherwise someone edited it.
+      else if (record?.kind === "json-setting" && isDeepStrictEqual(current.value, record.value)) actions.push({ type: "update", desired: d });
       else actions.push({ type: "conflict", cause: "edited", targets: d.targets, path: d.path, desired: d, owned: record, resolution: "keep" });
       continue;
     }

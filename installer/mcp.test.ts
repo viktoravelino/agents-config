@@ -78,6 +78,26 @@ test("Bob: merging leaves the user's servers alone and removal deletes only ours
   });
 });
 
+test("Bob: a changed repo value updates an untouched key and conflicts with a hand-edited one", () => {
+  const owned = apply(plan([], ["bob"]));
+  const next = { mcpServers: { local: { command: "tool", args: ["serve"] }, remote: { type: "http", url: "https://example.test/v2" } } };
+  writeFileSync(pluginFile(), JSON.stringify(next));
+  const remoteKey = ["mcpServers", "remote"];
+
+  const update = plan(owned, ["bob"]);
+  expect(update.actions).toMatchObject([{ type: "update", desired: { keyPath: remoteKey } }]);
+  apply(update);
+  expect(JSON.parse(readFileSync(bobFile(), "utf8")).mcpServers.remote).toEqual({ type: "streamable-http", url: "https://example.test/v2" });
+
+  // Reset to the first install, edit the key by hand, then change the repo value again.
+  writeFileSync(bobFile(), JSON.stringify({ mcpServers: { local: { command: "tool", args: ["serve"] }, remote: { url: "https://mine.test" } } }));
+  writeFileSync(pluginFile(), JSON.stringify({ mcpServers: { ...next.mcpServers, remote: { type: "http", url: "https://example.test/v3" } } }));
+  const conflict = plan(owned, ["bob"]);
+  expect(conflict.actions).toMatchObject([{ type: "conflict", cause: "edited", resolution: "keep", desired: { keyPath: remoteKey } }]);
+  apply(conflict);
+  expect(JSON.parse(readFileSync(bobFile(), "utf8")).mcpServers.remote).toEqual({ url: "https://mine.test" });
+});
+
 test("plugin: installs once for all servers, then reports it unchanged", () => {
   const first = plan([], ["codex"]);
   expect(first.actions).toMatchObject([{ type: "create", desired: { kind: "cli-plugin", id: "mcp@agents-config" } }]);
