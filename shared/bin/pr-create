@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Files a PR from a body on stdin. Passes all arguments to `gh pr create`.
+# Writes the body to a unique temp file, then checks that GitHub stored the same body.
+# Prints the PR URL on stdout. Exits non-zero on a mismatch.
+
+set -euo pipefail
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+cat > "$tmp"
+
+url=$(gh pr create --body-file "$tmp" "$@")
+
+# Strips trailing whitespace on each line. The $(...) below drops the final newlines.
+normalize() { sed -E 's/[[:space:]]+$//'; }
+
+if [ "$(normalize < "$tmp")" != "$(gh pr view "$url" --json body -q .body | normalize)" ]; then
+  echo "pr-create: the body on GitHub differs from the body you sent: $url" >&2
+  exit 1
+fi
+printf '%s\n' "$url"

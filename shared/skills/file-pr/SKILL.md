@@ -36,13 +36,15 @@ BAD
 GOOD
 > ✅ My "new worktree" default was ignored when starting new threads on existing worktrees. Super unintuitive. Now your preferences always apply.
 
-## Always write the body to a file
+## File with the script
 
-Never pass the description with `--body "..."`. Shell escaping mangles inline HTML, backticks and `$`, and this silently corrupts the description. Write the description to a temp file and use `--body-file`:
-
+Pipe the description into the script. The script prints the PR URL:
 ```bash
-gh pr create --base <base> --title "…" --body-file /tmp/pr-body.md
+/Users/viktoravelino/projects/agents-config/shared/bin/pr-create --base <base> --title "…" <<'BODY'
+…description…
+BODY
 ```
+For `gh pr edit`, use a `mktemp` file with `--body-file`.
 
 ## Images and screenshots
 
@@ -83,10 +85,9 @@ curl -sIL -o /dev/null -w '%{http_code}\n' "<raw-url>"
 
 ### When browser upload is required
 
-Video (`.mp4`, `.mov`) renders as an inline player only when you upload it through the web UI. A raw URL renders as a bare link. The same applies if the user prefers to match the repo's `user-attachments` convention. In that case, file the PR with a clearly marked placeholder line, then hand off:
+Video (`.mp4`, `.mov`) renders as an inline player only when you upload it through the web UI. A raw URL renders as a bare link. The same applies if the user prefers to match the repo's `user-attachments` convention. In that case, file the PR with the script and a clearly marked placeholder line, then hand off:
 
 ```bash
-gh pr create --title "…" --body-file /tmp/pr-body.md
 gh pr view --web    # user drags the file onto the placeholder; GitHub rewrites it
 ```
 

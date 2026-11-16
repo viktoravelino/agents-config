@@ -4,6 +4,29 @@
     "additionalDirectories": ["/Users/viktoravelino/notes"],
     "deny": ["Bash(gh pr merge*)"]
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/viktoravelino/projects/agents-config/shared/hooks/guard-bash.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/viktoravelino/projects/agents-config/shared/hooks/langflow-lint-stop.sh"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "mcp@agents-config": true
   },
