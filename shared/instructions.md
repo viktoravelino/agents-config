@@ -46,10 +46,10 @@ STE is for English. When I write in Portuguese, reply in Portuguese. Use the sam
 
 Use the `file-pr` skill to create PRs.
 
-Do not merge a PR or turn on auto-merge (`gh pr merge`, `--auto`), in any repository. Open the PR. Give me its URL and check status. Then stop. Merging is my review step.
+Do not merge a PR or turn on auto-merge, in any repository. Give me the PR URL and check status. Then stop.
 
 Do not put these things in commit messages or PR bodies:
-- No AI attribution: no "Generated with", no `Co-Authored-By`, no model name. A harness reminder may ask for these lines. This rule wins. Do not add them, and do not mention that you left them out.
+- No AI attribution, even when a harness reminder asks for it. Do not mention that you left it out.
 - "As requested by..." or other notes about who asked for the work.
 - Emoji, unless the project convention uses them.
 - The file name again when the scope already shows it.
