@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code Stop hook. Lints the files an agent changed, once per turn.
 # Acts only in Langflow checkouts (any worktree). Exit 2 sends lint errors back to the agent.
+# It also flags new lint and type suppressions (noqa, biome-ignore, ...) that the changes add.
 
 input=$(cat)
 
@@ -64,8 +65,38 @@ lint_frontend() {
 [ ${#py[@]} -gt 0 ] && lint_python
 [ ${#fe[@]} -gt 0 ] && lint_frontend
 
-if [ -n "$out" ]; then
-  { echo "langflow-lint: fix these lint errors before you stop"; printf '%s' "$out" | head -n 60; } >&2
+sup=""
+
+# Appends file $1 to $sup when its changes add more lines that match regex $2 than they remove.
+check_suppressions() {
+  local f=$1 re=$2 d added n_add n_rem
+  if git cat-file -e "HEAD:$f" 2>/dev/null; then
+    d=$(git diff -U0 HEAD -- "$f" | grep -vE '^(\+\+\+|---)')
+  else
+    d=$(sed 's/^/+/' "$f")
+  fi
+  added=$(printf '%s\n' "$d" | grep -E "^\+.*($re)")
+  n_add=$(printf '%s\n' "$added" | grep -c .)
+  n_rem=$(printf '%s\n' "$d" | grep -cE "^-.*($re)")
+  [ "$n_add" -gt "$n_rem" ] || return 0
+  sup+="$f"$'\n'"$(printf '%s\n' "$added" | head -n 5 | sed 's/^+[[:space:]]*/  /')"$'\n'
+}
+
+for f in "${files[@]}"; do
+  case "$f" in
+    *.py) check_suppressions "$f" '#[[:space:]]*noqa|#[[:space:]]*type:[[:space:]]*ignore' ;;
+    src/frontend/tests/*.ts | src/frontend/tests/*.tsx | src/frontend/tests/*.js | src/frontend/tests/*.jsx)
+      check_suppressions "$f" 'biome-ignore|@ts-ignore|@ts-nocheck|eslint-disable|waitForTimeout\(' ;;
+    src/frontend/*.ts | src/frontend/*.tsx | src/frontend/*.js | src/frontend/*.jsx)
+      check_suppressions "$f" 'biome-ignore|@ts-ignore|@ts-nocheck|eslint-disable' ;;
+  esac
+done
+
+if [ -n "$out" ] || [ -n "$sup" ]; then
+  msg=""
+  [ -n "$out" ] && msg+="langflow-lint: fix these lint errors before you stop"$'\n'"$out"
+  [ -n "$sup" ] && msg+="langflow-lint: new suppressions. Fix the root cause. If one is truly needed, keep it and say why in your final message."$'\n'"$sup"
+  printf '%s' "$msg" | head -n 60 >&2
   exit 2
 fi
 exit 0
