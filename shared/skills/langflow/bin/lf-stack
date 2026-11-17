@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Runs the Langflow Docker stack of the current worktree.
+# Derives the compose project name and host ports from the worktree directory name.
+# Usage: lf-stack [--t3] ports | up [args] | <any docker compose command>
+# Default namespace is the agent stack (p+2, p+3). --t3 selects the T3 stack (p, p+1).
+
+set -euo pipefail
+
+compose_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/../docker" && pwd -P)/compose.yml"
+
+# Prints the usage to stderr and exits 2.
+usage() {
+  echo "usage: lf-stack [--t3] ports | up [args] | <docker compose args>" >&2
+  exit 2
+}
+
+# Prints the project name and the two URLs.
+show() {
+  echo "project=$COMPOSE_PROJECT_NAME"
+  echo "backend=http://localhost:$BACKEND_PORT"
+  echo "frontend=http://localhost:$FRONTEND_PORT"
+}
+
+t3=0
+if [ "${1:-}" = "--t3" ]; then t3=1; shift; fi
+[ $# -gt 0 ] || usage
+
+WORKTREE=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "lf-stack: not inside a git repository" >&2; exit 1; }
+name=$(basename "$WORKTREE")
+p=$((20000 + $(printf '%s\n' "$name" | cksum | cut -d' ' -f1) % 500 * 20))
+slug=$(printf '%s' "$name" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-' '-')
+if [ "$t3" = 1 ]; then
+  COMPOSE_PROJECT_NAME="langflow-$slug-$p"; BACKEND_PORT=$p; FRONTEND_PORT=$((p + 1))
+else
+  COMPOSE_PROJECT_NAME="langflow-agent-$slug-$p"; BACKEND_PORT=$((p + 2)); FRONTEND_PORT=$((p + 3))
+fi
+export WORKTREE COMPOSE_PROJECT_NAME BACKEND_PORT FRONTEND_PORT
+
+case "$1" in
+  ports) show ;;
+  up)
+    shift
+    docker volume create langflow-agent-uv-cache >/dev/null
+    docker volume create langflow-agent-npm-cache >/dev/null
+    docker image inspect langflow-agent-base >/dev/null 2>&1 || docker compose -f "$compose_file" build
+    show
+    docker compose -f "$compose_file" up -d --wait --wait-timeout 900 "$@"
+    ;;
+  *) docker compose -f "$compose_file" "$@" ;;
+esac
