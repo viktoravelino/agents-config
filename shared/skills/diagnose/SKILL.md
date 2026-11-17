@@ -52,7 +52,7 @@ Before you fix, tell the user the cause and the planned fix in a few lines. Stop
 - Run the reproduction again, unchanged. It must now pass. Run the affected tests, and run lint and type checks scoped to the changed files.
 - If the probe is cheap and deterministic, move it into the test suite. Do not leave it in `/tmp`.
 
-For anything larger than a one-line change, offer an `adversarial-review` of the diff before the user reviews it.
+For anything larger than a one-line change, offer a `counsel-review` of the diff before the user reviews it.
 
 ## 6. Report
 

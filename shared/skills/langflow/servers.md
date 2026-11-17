@@ -1,13 +1,13 @@
 # Langflow: running an isolated stack
 
-This file applies the generic rules in `dev-servers` to Langflow. There are two modes. Use **Docker mode** whenever `docker info` succeeds. Use **host mode** as the fallback. The credential check and the Playwright probe config are the same in both modes. The ports are different (see below).
+This file applies the generic rules in `dev-servers` to Langflow. There are two modes. Use **Docker mode**. When Docker is not running, or a claim needs macOS-specific behavior or Postgres, stop and ask the user before you use **host mode**. The credential check and the Playwright probe config are the same in both modes. The ports are different (see below).
 
 ## Contents
 
 - Ports
 - Credential check
 - Docker mode (preferred): start, running things inside the stack, teardown
-- Host mode (fallback): hazards, dependencies, backend, frontend, teardown
+- Host mode (only after the user agrees): hazards, dependencies, backend, frontend, teardown
 - Playwright
 - IBM-Langflow overlay
 
@@ -62,7 +62,7 @@ $COMPOSE up -d --wait --wait-timeout 900
 
 - `env_file` loads `.env` from the worktree, so the user's API keys reach the backend. The compose `environment:` block wins over it, so nothing can override the isolation variables.
 - `LANGFLOW_AUTO_LOGIN` defaults to `true`. When the claim needs login, export it as `false` before `up`. The stack then uses `LANGFLOW_SUPERUSER`/`LANGFLOW_SUPERUSER_PASSWORD` (default `langflow`/`langflow`).
-- The database is SQLite in the project's `data` volume. The stack does not provide Postgres. If a claim needs Postgres, say so and fall back to host mode with a throwaway Postgres.
+- The database is SQLite in the project's `data` volume. The stack does not provide Postgres. If a claim needs Postgres, say so and ask the user before you use host mode with a throwaway Postgres.
 - To test a missing key, export it empty before `up` (`export OPENAI_API_KEY=`). The `environment:` block does not set API keys, so without that export the `.env` value applies.
 
 ### Running things inside the stack
@@ -74,7 +74,7 @@ $COMPOSE exec backend uv run pytest src/backend/tests/unit/path/test_x.py
 $COMPOSE exec frontend npx jest src/some/file.test.tsx
 ```
 
-The container is `linux/arm64`. If a claim depends on macOS-specific behavior, use host mode.
+The container is `linux/arm64`. If a claim depends on macOS-specific behavior, ask the user before you use host mode.
 
 ### Teardown
 
@@ -98,9 +98,9 @@ docker volume rm <those volumes>
 
 The shared caches show up as dangling whenever no stack is running, and they carry compose labels like any other volume. Only the name filter keeps them out of that list.
 
-## Host mode (fallback)
+## Host mode (only after the user agrees)
 
-Use host mode when Docker is not running, or when a claim depends on macOS-specific behavior or on a Postgres database.
+Use host mode only when the user agrees. Ask first when Docker is not running, or when a claim needs macOS-specific behavior or a Postgres database.
 
 ### Hazards
 

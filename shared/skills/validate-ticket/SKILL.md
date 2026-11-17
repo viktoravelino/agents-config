@@ -83,7 +83,7 @@ verdict.
 
 Then set up the evidence store with the `evidence` skill. This skill writes
 `VALIDATION.md`, `validation.json`, `probes/`, and `before/` into it. `work-ticket` and
-`adversarial-review` add the rest later.
+`counsel-review` add the rest later.
 
 ## 3. Check the claim in code
 

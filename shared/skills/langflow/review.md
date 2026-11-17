@@ -1,6 +1,6 @@
 # Langflow: review specifics
 
-This file applies the generic angles in `adversarial-review` to Langflow.
+This file applies the generic rules in `ponytail-review` to Langflow.
 
 ## Layout
 

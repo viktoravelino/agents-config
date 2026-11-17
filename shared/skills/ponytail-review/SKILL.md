@@ -26,21 +26,38 @@ This is a report the user asked for, so give it in full.
 - Find the expected load in the repo (README, deploy config): one person
   running a script, or many users and processes at once. Judge scale against
   that, and say which load you assumed.
+- Collect the intent: the PR body, the commit messages or the ticket. Ask
+  only if you cannot find it.
+- Find what lint and CI already enforce: lint config, CI workflows,
+  pre-commit hooks. Do not report what they catch.
+- Report what they do not catch. Examples: a type checker that no CI job
+  runs, or a hook-dependency lint rule that is off.
+- Read the project profile review file if one exists: the skill whose
+  `metadata.repos` lists the origin's `owner/repo`, file `review.md`.
 
 ## 2. Look for
 
 1. **Bug:** wrong result, crash, missed edge case (empty, zero, last item,
    rounding, time zones), a caller broken by the change, a fix applied in one
-   caller while the shared function stays broken.
-2. **Risk:** security holes (injection, weak randomness, secrets, missing
-   checks on input from users), data loss (errors swallowed, writes in the
-   wrong order, no transaction).
-3. **Scale:** fine for one user, wrong for many: check-then-write races, the
-   same work done by every process, memory or lists that only grow, a query
-   per item, O(n^2) on big input, per-process state that must be shared.
+   caller while the shared function stays broken. A loading or error state
+   that the code treats as empty data. Existing data that now takes a new
+   path.
+2. **Risk:** security holes (injection, weak randomness, secrets in logs or
+   error text, missing checks on input from users). Input that reaches a sink
+   unchecked. Authorization that differs between two paths to the same
+   resource. A denial that leaks that the resource exists. Data loss (errors
+   swallowed, writes in the wrong order, no transaction).
+3. **Scale:** fine for one user, wrong for many: check-then-write races, a
+   stale async result that overwrites newer state, the same work done by
+   every process, memory or lists that only grow, a query per item, O(n^2)
+   on big input, per-process state that must be shared.
 4. **Missing test:** risky new logic (a branch, a parser, money, security,
    data writes, a bug fix) with no test that fails when it breaks. One good
-   test, not coverage.
+   test, not coverage. A bug fix needs a test that fails on the base branch;
+   check that the assertion depends on the changed lines. When it is cheap,
+   run the new test against the base in a detached worktree (see
+   `git-worktree`). Flag tests that mock the code under test, or the
+   security check they claim to cover.
 5. **Speed:** big slowdowns are problems. Small wins (work repeated in a hot
    loop) are suggestions; some software counts every millisecond.
 6. **Lean:** code that should not exist or should be smaller.
@@ -49,10 +66,16 @@ This is a report the user asked for, so give it in full.
    - stdlib / native: the standard library or platform already does it; a
      new dependency for a few lines
    - yagni: abstraction with one implementation, config nobody sets
-   - merge: near-copies that must change together
+   - merge: near-copies that must change together; one rule kept in two
+     places, such as a frontend constant copied from a backend source
    - split: one function doing several unrelated jobs, so it is hard to read
      or test. Split by job, never by line count, and never into helpers that
      exist only to make a function shorter.
+
+When the diff touches these, also read: [react.md](react.md) for `.tsx` and
+`.jsx` files, hooks and stores; [typescript.md](typescript.md) for `.ts` and
+`.tsx` files; [python.md](python.md) for `.py` files, migrations and
+`pyproject.toml`.
 
 ## 3. Check before you report
 
@@ -62,9 +85,16 @@ This is a report the user asked for, so give it in full.
   empty, the code really is unused.
 - A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
+- Prove each Must fix. Run a read-only command or a test when one can show
+  it. Otherwise say that you traced it by reading only.
+- Stay on the change. Report only what the diff added, changed or broke.
+  List a problem that was there before under `Not in this change:`, three
+  lines at most. It never affects the verdict.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never
   add layers, frameworks or config the problem does not need.
-- No style taste, no "consider", no vague worries.
+- No style taste, no "consider", no vague worries, nothing that lint
+  already reports.
+- Nice to have: five findings at most. Drop the rest.
 
 ## 4. Output
 
@@ -81,6 +111,9 @@ Then the findings in three groups, skip empty groups:
 
 Number findings across all groups, so the user can say "fix 2 and 5".
 Every finding has all four parts, each one or two short sentences:
+**What this is**, **Problem**, **Fix**, **If we skip it**. A Must fix has a
+fifth part, **Proof**: the command you ran and its result, or "read only".
+Example:
 
 2. **Orders land on the wrong day** (`billing/close_day.py:L40-52`)
    - **What this is:** At midnight this job closes the day and bills all orders of that day.
@@ -89,13 +122,16 @@ Every finding has all four parts, each one or two short sentences:
    - **Fix:** Compute the day once in the shop's time zone:
      `datetime.now(ZoneInfo("Europe/Berlin")).date()`. One line, nothing else changes.
    - **If we skip it:** Late orders show the wrong date, and accounting fixes them by hand.
+   - **Proof:** Read only. `close_day.py:L44` calls `datetime.utcnow()` and no time zone is set.
 
 End with:
 - `Verdict: Ship.` or `Verdict: fix 1 and 3 first.`
 - `Lean: -<N> lines possible.` when lean findings exist.
+- `Not in this change:` up to three lines, if a problem was there before.
 - `Not checked:` one line, if something mattered and you could not check it.
 
 Nothing found: `What this change does:`, then `Looks good. Ship.` and one line
 on what you checked.
 
-Lists findings, changes no code.
+Lists findings, changes no code. Do not edit, commit, run formatters or
+start dev servers.
