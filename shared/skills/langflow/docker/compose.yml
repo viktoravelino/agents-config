@@ -1,11 +1,12 @@
 # Per-worktree Langflow dev stack for agent verification (see servers.md, "Docker mode").
 #
-# Required env: WORKTREE (abs path), COMPOSE_PROJECT_NAME (`langflow-<slug>-<port base>`, set by the caller),
+# Run it through `bin/lf-stack` (next to this directory). The script sets the env below.
+# Required env: WORKTREE (abs path), COMPOSE_PROJECT_NAME (`langflow-<slug>-<port base>`),
 #               BACKEND_PORT, FRONTEND_PORT (host-side; inside the containers the
 #               ports are always the defaults, so repo tooling is safe to run there).
 #
-#   docker compose -f ~/.claude/skills/langflow/docker/compose.yml up -d --wait
-#   docker compose -f ~/.claude/skills/langflow/docker/compose.yml down -v
+#   ~/.claude/skills/langflow/bin/lf-stack up
+#   ~/.claude/skills/langflow/bin/lf-stack down -v
 
 services:
   backend:

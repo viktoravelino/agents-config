@@ -15,7 +15,7 @@ This file applies the generic rules in `dev-servers` to Langflow. There are two 
 
 Host mode: backend `7861` (then `7862`, …), frontend `3001` (then `3002`, …). The user's own stack runs on `7860` and `3000`.
 
-Docker mode derives both ports from the worktree directory name (see "Start"), so concurrent worktrees rarely collide (500 hash buckets). If `up` fails with "port already allocated", another worktree hashed to the same block. These are the *host-side* mappings. Inside the containers, the ports are always the defaults.
+Docker mode derives both ports from the worktree directory name (`lf-stack`, see "Start"), so concurrent worktrees rarely collide (500 hash buckets). If `up` fails with "port already allocated", another worktree hashed to the same block. These are the *host-side* mappings. Inside the containers, the ports are always the defaults.
 
 ## Credential check
 
@@ -43,22 +43,18 @@ Measured on this machine (OrbStack, arm64): base image build 22 s. First start o
 
 ### Start
 
-Run this from the worktree root. The port base is `p = 20000 + cksum(basename) % 500 * 20`. It is a 20-port block for each worktree directory name (not the branch, because someone can rename the branch while the stack runs).
-
-The T3 "Stack up (Docker)" script owns project `langflow-<slug>-<p>` on `p`/`p+1`. The agent never touches it. The agent's stack lives in its own namespace inside the same block: project `langflow-agent-<slug>-<p>`, backend `p+2`, frontend `p+3`. It gets its own volumes, containers and ports. The slug is the lower-cased basename. The port base is appended because different directory names can sanitize to the same slug.
+One script, `lf-stack`, derives the project name and the ports. Define it once and run it from the worktree:
 
 ```sh
-COMPOSE="docker compose -f $HOME/.claude/skills/langflow/docker/compose.yml"
-p=$((20000 + $(basename "$PWD" | cksum | cut -d' ' -f1) % 500 * 20)); slug=$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\n' '-')
-export WORKTREE="$PWD" COMPOSE_PROJECT_NAME="langflow-agent-$slug-$p" BACKEND_PORT=$((p+2)) FRONTEND_PORT=$((p+3))
-
-docker volume create langflow-agent-uv-cache >/dev/null
-docker volume create langflow-agent-npm-cache >/dev/null
-docker image inspect langflow-agent-base >/dev/null 2>&1 || $COMPOSE build
-$COMPOSE up -d --wait --wait-timeout 900
+LF="$HOME/.claude/skills/langflow/bin/lf-stack"
+$LF up
 ```
 
-`--wait` returns when both health checks pass (backend `/health`, frontend `/`). If it fails, `$COMPOSE logs backend` or `$COMPOSE logs frontend` shows the reason. The usual reasons are an `npm ci` network reset (it retries five times) or a missing `.env`.
+The port base is `p = 20000 + cksum(basename) % 500 * 20`. It is a 20-port block for each worktree directory name (not the branch, because someone can rename the branch while the stack runs). The T3 "Stack up (Docker)" script owns project `langflow-<slug>-<p>` on `p`/`p+1` (`lf-stack --t3`). The agent never touches it. The agent's stack lives in its own namespace inside the same block: project `langflow-agent-<slug>-<p>`, backend `p+2`, frontend `p+3`. It gets its own volumes, containers and ports. The slug is the lower-cased basename. The port base is appended because different directory names can sanitize to the same slug.
+
+`$LF ports` prints the project name and both URLs without calling Docker. `$LF up` creates the cache volumes, builds the base image when it is missing, prints the same lines, and starts the stack. Any other argument passes to `docker compose` for this project.
+
+`--wait` returns when both health checks pass (backend `/health`, frontend `/`). If it fails, `$LF logs backend` or `$LF logs frontend` shows the reason. The usual reasons are an `npm ci` network reset (it retries five times) or a missing `.env`.
 
 - `env_file` loads `.env` from the worktree, so the user's API keys reach the backend. The compose `environment:` block wins over it, so nothing can override the isolation variables.
 - `LANGFLOW_AUTO_LOGIN` defaults to `true`. When the claim needs login, export it as `false` before `up`. The stack then uses `LANGFLOW_SUPERUSER`/`LANGFLOW_SUPERUSER_PASSWORD` (default `langflow`/`langflow`).
@@ -70,8 +66,8 @@ $COMPOSE up -d --wait --wait-timeout 900
 Run tests, lint, and repo tooling in the backend and frontend containers. They use the same bind-mounted worktree. Inside, the ports are the defaults, so `make backend`, `npm run type-check`, and the repo's Playwright `webServer` are all harmless there:
 
 ```sh
-$COMPOSE exec backend uv run pytest src/backend/tests/unit/path/test_x.py
-$COMPOSE exec frontend npx jest src/some/file.test.tsx
+$LF exec backend uv run pytest src/backend/tests/unit/path/test_x.py
+$LF exec frontend npx jest src/some/file.test.tsx
 ```
 
 The container is `linux/arm64`. If a claim depends on macOS-specific behavior, ask the user before you use host mode.
@@ -79,8 +75,8 @@ The container is `linux/arm64`. If a claim depends on macOS-specific behavior, a
 ### Teardown
 
 ```sh
-$COMPOSE down -v      # containers + this project's venv/node_modules/data volumes
-$COMPOSE down         # containers only; next `up` is ~17 s
+$LF down -v      # containers + this project's venv/node_modules/data volumes
+$LF down         # containers only; next `up` is ~17 s
 ```
 
 The shared cache volumes (`langflow-agent-uv-cache`, `langflow-agent-npm-cache`) and the `langflow-agent-base` image are external and survive `down -v`. Keep them.
@@ -155,7 +151,7 @@ Stop the listeners on `7861` and `3001` (or the ports that you took). Remove `/t
 
 ## Playwright
 
-This applies to both modes. Use the probe config from `dev-servers` with `baseURL: "http://localhost:<FRONTEND_PORT>/"`. `<FRONTEND_PORT>` is the host-side frontend port: `p+3` for the Docker agent stack, `3001` in host mode. Run it on the host from `src/frontend`, so that `@playwright/test` and the repo's test utils (`tests/utils/...`) resolve. Browsers stay on the host. The Docker image has none, on purpose.
+This applies to both modes. Use the probe config from `dev-servers` with `baseURL: "http://localhost:<FRONTEND_PORT>/"`. `<FRONTEND_PORT>` is the host-side frontend port: the `frontend=` line of `$LF ports` for the Docker agent stack, `3001` in host mode. Run it on the host from `src/frontend`, so that `@playwright/test` and the repo's test utils (`tests/utils/...`) resolve. Browsers stay on the host. The Docker image has none, on purpose.
 
 ```sh
 npx playwright test --config ../../.evidence/probes/ui-probe.config.ts
