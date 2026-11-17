@@ -1,6 +1,7 @@
 # Two reviewers: host mechanics
 
 `SKILL.md` says what the two reviewers do. This file says how to launch them on each host.
+The reviewers return findings in the `ponytail-review` output format as their final message, not JSON.
 
 ## Pick the two models
 
@@ -12,20 +13,20 @@
    - Current model is Claude (also in a Copilot thread): a non-Claude model through Copilot. The Copilot default can be a Claude model, so always name the model explicitly.
    - Current model is not Claude: Claude. The Claude CLI default model is a correct choice.
    - Pick the strongest model of that family that the host lists.
-4. If no other family is available, use the fallback in `SKILL.md`.
+4. If no other family is available, use the fallback in **When a reviewer fails**.
 
 ## Write the brief once
 
-Set up the evidence store first, as the `evidence` skill describes. Then write the brief to a file in it, so both reviewers get the same text:
+Write the brief to a file, so both reviewers get the same text. When `.evidence/` exists, use the evidence store. Otherwise, use a `mktemp` file.
 
 ```sh
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
-BRIEF=".evidence/reviews/$TS.brief.md"
+if [ -d .evidence ]; then BRIEF=".evidence/reviews/$TS.brief.md"; else BRIEF="$(mktemp)"; fi
 ```
 
 Use the same `TS` for the review file later. End the brief with these two lines:
 
-- "Return only a JSON object with `findings` and `non_issues` as your final message. Write no files."
+- "Return your findings in the output format of `ponytail-review` as your final message. Write no files."
 - "STRICTLY READ-ONLY: do not create or modify files, and run no state-changing git commands."
 
 ## Launch in T3 Code
@@ -36,7 +37,7 @@ In T3 Code, the host does not matter. A Claude, Copilot or Bob thread uses the s
 2. Launch both reviewers with `delegate_task` in the same turn. Set `mode: "async"`, `interactionMode: "plan"` and `role: "review"`. Give each reviewer a unique `clientRequestId` for each review round.
 3. **Same model**: omit `target`. The child inherits the provider and model of the thread.
 4. **Other family**: set `target.providerInstanceId` and `target.model` from the capabilities result, by the family rules in **Pick the two models**. Set high reasoning effort if the capabilities list it. Do not set `allow_all`.
-5. Pass the brief text as the prompt. After its two closing lines, add: "Do not propose a plan and do not ask for approval. Return the JSON directly as your final message."
+5. Pass the brief text as the prompt. After its two closing lines, add: "Do not propose a plan and do not ask for approval. Return the findings directly as your final message."
 
 Each reviewer is a child thread that the user can open. Mention its link in the reply. Do not poll a reviewer. The host wakes the session when each reviewer finishes.
 
@@ -46,7 +47,7 @@ Start both reviewers in the same turn. Do not poll a reviewer. Wait for the host
 
 ### Claude Code
 
-- **Same model**: a read-only `Explore` agent (thoroughness: very thorough). Pass the brief as its prompt. Set the `model` override to the model of the current thread, because `Explore` can default to a smaller model. `Explore` has no `Write` or `Edit` tool, so it cannot save the review. That is why it returns the JSON.
+- **Same model**: a read-only `Explore` agent (thoroughness: very thorough). Pass the brief as its prompt. Set the `model` override to the model of the current thread, because `Explore` can default to a smaller model. `Explore` has no `Write` or `Edit` tool, so it cannot save the review. It returns the findings as its final message.
 - **Other family**: run the Copilot CLI in the background:
 
   ```sh
@@ -85,6 +86,7 @@ Start both reviewers in the same turn. Do not poll a reviewer. Wait for the host
 
 ## When a reviewer fails
 
-- A reviewer fails, times out, or returns anything that is not the JSON object: set its `status` to `failed` in `reviewers`, with the reason in `note`. Continue with the other reviewer's findings.
-- No other family is available: set the other-family `status` to `unavailable`, with the reason in `note`.
-- Either way, say it in the reply to the user. Never block the review on the second opinion.
+- A reviewer fails, times out, or returns no findings in the `ponytail-review` format: say it in the `Reviewers:` line, with the reason. Continue with the other reviewer's findings.
+- No other family is available: say it in the `Reviewers:` line, with the reason.
+- Either way, write this line in the reply to the user: "Second opinion: not run (<reason>)."
+- Never block the review on the second opinion. Never skip it silently.

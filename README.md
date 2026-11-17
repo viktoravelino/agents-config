@@ -159,7 +159,7 @@ project's profile.
 
 | Kind | Skills |
 | --- | --- |
-| Workflows | `validate-ticket`, `work-ticket`, `diagnose`, `adversarial-review`, `file-pr`, `request-review`, `standup` |
+| Workflows | `validate-ticket`, `work-ticket`, `diagnose`, `counsel-review`, `ponytail-review`, `file-pr`, `request-review`, `standup` |
 | Shared helpers | `evidence` (where proof lives), `dev-servers` (running an app in isolation), `git-worktree`, `acli-jira`, `notes` |
 | Project profiles | `langflow` |
 | Documents | `design-artifact`, `html-plan` |
@@ -179,7 +179,7 @@ repository, and list its `owner/repo` in `metadata.repos`:
 shared/skills/<repo>/
   SKILL.md      index; frontmatter sets user-invocable: false, metadata.kind: project-profile and metadata.repos
   servers.md    ports, start commands, hazards      (read by dev-servers)
-  review.md     stack, hot paths, read-only checks  (read by adversarial-review)
+  review.md     stack, hot paths, read-only checks  (read by ponytail-review)
   workflow.md   base branches, review channel, ticket tracker, standup scope
 ```
 

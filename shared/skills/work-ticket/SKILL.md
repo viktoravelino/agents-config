@@ -1,9 +1,9 @@
 ---
 name: work-ticket
-description: Does the work that a validated ticket asks for. Resumes the worktree and verdict that validate-ticket left, implements against the recorded scope and acceptance criteria, captures the matching after-evidence, and puts the diff through an adversarial review before it hands the change back for approval. Use when the user says "let's fix it", "implement this", or "start the work" on a ticket that has already been validated.
+description: Does the work that a validated ticket asks for. Resumes the worktree and verdict that validate-ticket left, implements against the recorded scope and acceptance criteria, captures the matching after-evidence, and puts the diff through a counsel review before it hands the change back for approval. Use when the user says "let's fix it", "implement this", or "start the work" on a ticket that has already been validated.
 argument-hint: "[ticket key]"
 metadata:
-  requires: [validate-ticket, evidence, dev-servers, file-pr, adversarial-review]
+  requires: [validate-ticket, evidence, dev-servers, file-pr, counsel-review]
 ---
 
 # Work Ticket
@@ -19,7 +19,7 @@ the repro and the fix scope are already in context. Use them. Do not re-read the
 re-trace the code, or re-run the repro from scratch. That wastes the handoff.
 
 A cost of the same session is that you inherit your own blind spots. For this reason the
-adversarial review at step 5 is not optional.
+counsel review at step 5 is not optional.
 
 ## Hard rules (read first)
 
@@ -104,12 +104,12 @@ Verify first, then capture evidence. Evidence of a broken change has no value.
 Then capture `.evidence/after/` as the matching half of every artifact in `.evidence/before/`,
 with the matching rules in `evidence`.
 
-## 5. Adversarial review
+## 5. Review
 
-- Run the `adversarial-review` skill on the diff. Never run it inline.
+- Run the `counsel-review` skill on the diff. Never run it inline.
 - Give it the intent (what the ticket asks and what the diff claims) and the constraints (services and ports to leave alone).
-- Act on the findings as its **Author handoff** section says, and record an outcome for each one.
-- Never leave a blocker `acknowledged`. Fix it, or dispute it with `file:line` evidence.
+- Fix or dispute each finding. Record one outcome for each finding number: `fixed`, `disputed` with `file:line` evidence, or `acknowledged` with the reason. The hand-back uses these outcomes.
+- Never leave a Must fix `acknowledged`. Fix it, or dispute it with `file:line` evidence.
 - After fixes, run the affected tests again and refresh any after-evidence that a fix changed.
 
 ## 6. Hand back
@@ -118,7 +118,7 @@ Stop with the change uncommitted in the worktree. Tell the user:
 
 - what changed and why
 - which acceptance criteria are met
-- the review verdict and the outcome of each finding
+- the review verdict and the outcome of each finding number
 - the evidence paths
 - anything out of scope that you found and left alone
 

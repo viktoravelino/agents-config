@@ -1,6 +1,6 @@
 ---
 name: evidence
-description: Defines where and how to keep proof for ticket, debugging and review work -- the durable evidence store under the common git dir, probe scripts and their watchdogs, what counts as proof, matched before/after captures, and cleanup. Use when a step must capture, store or share proof, as validate-ticket, work-ticket, diagnose and adversarial-review do.
+description: Defines where and how to keep proof for ticket, debugging and review work -- the durable evidence store under the common git dir, probe scripts and their watchdogs, what counts as proof, matched before/after captures, and cleanup. Use when a step must capture, store or share proof, as validate-ticket, work-ticket, diagnose and counsel-review do.
 user-invocable: false
 ---
 
@@ -23,7 +23,7 @@ You can browse evidence at `.evidence/` in the checkout. The real bytes live und
   probes/                               scripts that check a claim (repros, spikes, capture scripts)
   before/                               the starting state: logs, screenshots, API responses, DB rows
   after/                                the matching end state, captured by work-ticket
-  reviews/                              adversarial-review findings, <UTC timestamp>.json + latest.json
+  reviews/                              counsel-review reports, <UTC timestamp>.md
 ```
 
 Set it up with the commands below, from anywhere inside the checkout. The setup is idempotent. Run it every time, even if an earlier skill already did. If you recreate a worktree of the same name, the setup links it again to the evidence that is still there.
@@ -71,7 +71,7 @@ You can capture `before/` only while the old state still exists (the broken beha
 
 `after/` is the matching half of every `before/` artifact. **Matching is the whole point**: use the same script, viewport, route, data and command. Reuse the capture scripts in `probes/`. A pair shot from two different angles proves nothing.
 
-If a `before/` artifact is missing after the change exists, do these steps in order: run `git stash`, restart what needs a restart, capture the artifact, then run `git stash pop`. Never rebuild it from memory. Never present an after-only capture as a comparison.
+If a `before/` artifact is missing after the change exists, do these steps in order: run `git add -A && git commit --no-verify -m "wip: evidence capture"`, run `git switch --detach HEAD~1`, restart what needs a restart, capture the artifact, run `git switch -`, then run `git reset HEAD~1`. Never rebuild it from memory. Never present an after-only capture as a comparison.
 
 Number the captures so the pair is obvious (`before/03-dialog-open.png` ↔ `after/03-dialog-open.png`).
 
