@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -44,7 +44,7 @@ test("flags a noqa added to a tracked file", () => {
   write(r, "a.py", "x = 1  # noqa: E501\n");
   const { code, err } = run(r);
   expect(code).toBe(2);
-  expect(err).toContain("new suppressions");
+  expect(err).toContain("more suppression lines than before");
   expect(err).toContain("a.py");
 });
 
@@ -80,4 +80,57 @@ test("ignores repos whose origin is not Langflow", () => {
   const r = repo({ "a.py": "x = 1\n" }, "https://github.com/other/repo.git");
   write(r, "a.py", "x = 1  # noqa: E501\n");
   expect(run(r).code).toBe(0);
+});
+
+test("flags a noqa file directive such as ruff: noqa", () => {
+  const r = repo({ "a.py": "x = 1\n" });
+  write(r, "a.py", "# ruff: noqa\nx = 1\n");
+  expect(run(r).code).toBe(2);
+});
+
+test("does not flag a file that moves with its old noqa", () => {
+  const r = repo({ "a.py": "x = 1  # noqa: E501\n" });
+  Bun.spawnSync(["git", "-C", r, "mv", "a.py", "b.py"]);
+  expect(run(r).code).toBe(0);
+});
+
+test("flags an added line that starts with ++", () => {
+  const r = repo({ "src/frontend/src/e.ts": "export const e = 1;\n" });
+  write(r, "src/frontend/src/e.ts", "export const e = 1;\n++count; // eslint-disable-line no-plusplus\n");
+  const { code, err } = run(r);
+  expect(code).toBe(2);
+  expect(err).toContain("e.ts");
+});
+
+test("keeps the suppression report when lint output is long", () => {
+  const r = repo({ "a.py": "x = 1\n" });
+  write(r, ".venv/bin/ruff", "#!/bin/sh\nseq 1 100\nexit 1\n");
+  chmodSync(join(r, ".venv/bin/ruff"), 0o755);
+  write(r, "a.py", "x = 1  # noqa: E501\n");
+  const { code, err } = run(r);
+  expect(code).toBe(2);
+  expect(err).toContain("more suppression lines than before");
+});
+
+test("does not flag an ordinary comment that mentions noqa", () => {
+  const r = repo({ "a.py": "x = 1\n" });
+  write(r, "a.py", "x = 1\n# Explain why noqa is unsafe\n");
+  expect(run(r).code).toBe(0);
+});
+
+test("lists modified files before files with a new path", () => {
+  const r = repo({ "old.py": "x = 1  # noqa\n", "a.py": "y = 1\n" });
+  Bun.spawnSync(["git", "-C", r, "mv", "old.py", "moved.py"]);
+  write(r, "a.py", "y = 1  # noqa\n");
+  const { code, err } = run(r);
+  expect(code).toBe(2);
+  expect(err.indexOf("a.py")).toBeGreaterThan(-1);
+  expect(err.indexOf("a.py")).toBeLessThan(err.indexOf("moved.py"));
+});
+
+test("flags a noqa even when git colors its diff output", () => {
+  const r = repo({ "a.py": "x = 1\n" });
+  Bun.spawnSync(["git", "-C", r, "config", "color.ui", "always"]);
+  write(r, "a.py", "x = 1  # noqa\n");
+  expect(run(r).code).toBe(2);
 });
