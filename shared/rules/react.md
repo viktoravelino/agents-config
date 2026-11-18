@@ -17,4 +17,3 @@ paths:
 - When no component fits, use semantic HTML: a `<button>` for click actions, never a `div` or `span` with `onClick`.
 - Give every input a label and every icon-only button an accessible name, also when you use a design-system component.
 - Use the project's i18n for user-visible text when nearby code does.
-- In tests, assert what the user sees, not component internals.
