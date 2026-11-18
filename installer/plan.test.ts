@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { applyPlan } from "./apply.ts";
+import { discoverCatalog } from "./catalog.ts";
 import type { Plan } from "./plan.ts";
 import type { Owned } from "./state.ts";
 import { createFixture, everything, planFor, removeFixture, type Fixture } from "./test-fixture.ts";
@@ -115,4 +116,13 @@ test("a failed step does not stop the plan, and owned records survive it", () =>
   expect(result.owned).toContainEqual(removal);
   expect(result.owned.some((o) => o.kind === "cli-plugin")).toBe(false);
   expect(fx.cli.state.codex.plugins.size).toBe(0);
+});
+
+test("rules: discovery finds the file; only Claude plans a symlink", () => {
+  expect(discoverCatalog(ctx.repo).find((i) => i.kind === "rules")).toMatchObject({ name: "style", description: "Style" });
+
+  const items = { ...everything, instructions: [], skills: [], agents: [], rules: ["style"] };
+  const created = (id: string) => plan([], items, [id]).actions.flatMap((a) => (a.type === "create" ? [a.desired.path] : []));
+  expect(created("claude")).toEqual([join(ctx.home, ".claude", "rules", "style.md")]);
+  for (const id of ["codex", "copilot", "bob"]) expect(created(id)).toEqual([]);
 });

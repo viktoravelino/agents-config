@@ -34,8 +34,6 @@ STE is for English. When I write in Portuguese, reply in Portuguese. Use the sam
 - Propose bold ideas when they can help our work a lot.
 - Keep tests focused. Do not write endless smoke tests or "regression tests" for deleted features.
 - Put a short comment above functions and classes. Update comments when you change the code.
-- Do not use `any`. Prefer inferred types, discriminated unions, `satisfies` and `as const`.
-- Do not write one-line functions that only wrap a cast.
 
 ## Questions and instructions
 

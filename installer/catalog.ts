@@ -4,7 +4,7 @@ import { parseFrontmatter, str, strList } from "./frontmatter.ts";
 import { parseMcpServers, describeMcpServer, type McpServer } from "./translate/mcp.ts";
 import { parseAgent, type AgentDefinition } from "./translate/agent.ts";
 
-export const kinds = ["instructions", "skills", "agents", "settings", "mcp"] as const;
+export const kinds = ["instructions", "skills", "agents", "settings", "mcp", "rules"] as const;
 export type Kind = (typeof kinds)[number];
 
 export type SkillGroup = "Workflows" | "Helpers" | "Project profiles";
@@ -17,7 +17,8 @@ export type Item =
   | (Base & { kind: "settings" })
   | (Base & { kind: "skills"; group: SkillGroup; requires: string[] })
   | (Base & { kind: "agents"; definition: AgentDefinition })
-  | (Base & { kind: "mcp"; server: McpServer });
+  | (Base & { kind: "mcp"; server: McpServer })
+  | (Base & { kind: "rules" });
 
 export type ItemOf<K extends Kind> = Extract<Item, { kind: K }>;
 
@@ -70,6 +71,15 @@ export function discoverCatalog(repo: string): Catalog {
     if (definition) items.push({ kind: "agents", name: definition.name, description: definition.description, source, definition });
   }
 
+  const rulesDir = join(shared, "rules");
+  for (const entry of listDir(rulesDir).sort()) {
+    if (!entry.endsWith(".md")) continue;
+    const source = join(rulesDir, entry);
+    const name = entry.slice(0, -".md".length);
+    const { body } = parseFrontmatter(readFileSync(source, "utf8"));
+    items.push({ kind: "rules", name, description: firstHeading(body) ?? name, source });
+  }
+
   const mcpFile = join(shared, "plugins", "mcp", ".mcp.json");
   if (existsSync(mcpFile)) {
     for (const [name, server] of Object.entries(parseMcpServers(readFileSync(mcpFile, "utf8")))) {
@@ -80,13 +90,18 @@ export function discoverCatalog(repo: string): Catalog {
   return items;
 }
 
+/** The text of the first `# ` heading, if any. */
+function firstHeading(body: string): string | undefined {
+  return /^# +(.+?)\s*$/m.exec(body)?.[1];
+}
+
 function listDir(dir: string): string[] {
   return existsSync(dir) ? readdirSync(dir) : [];
 }
 
 /** An empty selection, for building one up kind by kind. */
 export function emptyItems(): ItemSelection {
-  return { instructions: [], skills: [], agents: [], settings: [], mcp: [] };
+  return { instructions: [], skills: [], agents: [], settings: [], mcp: [], rules: [] };
 }
 
 /**

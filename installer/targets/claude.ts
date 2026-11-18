@@ -12,5 +12,6 @@ export const claude: Target = {
     settings: (item, { home }) => ({ kind: "symlink", path: join(home, ".claude", "settings.json"), source: item.source }),
     skills: (item, { home }) => ({ kind: "symlink", path: join(home, ".claude", "skills", item.name), source: item.source }),
     agents: (item, { home }) => ({ kind: "symlink", path: join(home, ".claude", "agents", basename(item.source)), source: item.source }),
+    rules: (item, { home }) => ({ kind: "symlink", path: join(home, ".claude", "rules", basename(item.source)), source: item.source }),
   },
 };

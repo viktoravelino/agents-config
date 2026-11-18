@@ -75,6 +75,7 @@ export function createFixture(): Fixture {
   put(join(repo, "shared", "instructions.md"), "hi\n");
   put(join(repo, "shared", "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: A\n---\n");
   put(join(repo, "shared", "agents", "helper.md"), "---\nname: helper\ndescription: Helps\n---\nHelp.\n");
+  put(join(repo, "shared", "rules", "style.md"), "---\npaths:\n  - \"**/*.ts\"\n---\n\n# Style\n\n- Be brief.\n");
   put(join(repo, ".claude-plugin", "marketplace.json"), JSON.stringify({ name: "agents-config", plugins: [{ name: "mcp", source: "./shared/plugins/mcp" }] }));
   put(join(plugin, ".claude-plugin", "plugin.json"), JSON.stringify({ name: "mcp" }));
   put(
@@ -93,10 +94,10 @@ export function removeFixture(fixture: Fixture): void {
 }
 
 /** Instructions, the skill and the agent; no settings or MCP servers. */
-export const everything: ItemSelection = { instructions: ["instructions"], skills: ["alpha"], agents: ["helper"], settings: [], mcp: [] };
+export const everything: ItemSelection = { instructions: ["instructions"], skills: ["alpha"], agents: ["helper"], settings: [], mcp: [], rules: [] };
 
 /** No items at all. */
-export const nothing: ItemSelection = { instructions: [], skills: [], agents: [], settings: [], mcp: [] };
+export const nothing: ItemSelection = { instructions: [], skills: [], agents: [], settings: [], mcp: [], rules: [] };
 
 /** Plans `items` for the `selected` targets the way main.ts does. By default every target counts as detected. */
 export function planFor(

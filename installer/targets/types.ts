@@ -68,5 +68,9 @@ export function artifactFor(target: Target, item: Item, ctx: Context): Artifact 
       const install = target.install.mcp;
       return install && install(item, ctx);
     }
+    case "rules": {
+      const install = target.install.rules;
+      return install && install(item, ctx);
+    }
   }
 }
