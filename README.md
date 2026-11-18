@@ -14,6 +14,7 @@ shared/agents/<name>.md  -> ~/.claude/agents/<name>.md,
                             ~/.copilot/agents/<name>.md,
                             and a generated ~/.codex/agents/<name>.toml
 shared/settings.json     -> ~/.claude/settings.json  (Claude only)
+shared/rules/<name>.md   -> ~/.claude/rules/<name>.md  (Claude only)
 shared/plugins/mcp/      Claude plugin with the user-wide MCP servers. Also a
                          plugin in Codex and Copilot, and merged into
                          ~/.bob/settings/mcp.json
@@ -47,6 +48,9 @@ installer keeps a generated file that you edited, unless you choose to
 overwrite it. An agent named `default`, `worker` or `explorer` overrides the
 Codex built-in agent of that name. The installer never touches
 `~/.codex/config.toml`.
+
+Rules are Claude only. A `paths:` list in the frontmatter of a rule limits it
+to matching files, so Claude loads the rule only when it works on them.
 
 A skill can declare dependencies with `metadata.requires: [other-skill]` in
 its frontmatter. When you select a skill, the installer also selects what it

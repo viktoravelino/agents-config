@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { PluginRef } from "./cli-plugin.ts";
-import { kinds, type ItemSelection } from "./catalog.ts";
+import { emptyItems, kinds, type ItemSelection } from "./catalog.ts";
 import type { JsonValue } from "./targets/types.ts";
 
 /**
@@ -45,11 +45,11 @@ export function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
-/** Whether a parsed JSON value maps every kind to item names. */
+/** Whether a parsed JSON value maps kinds to item names. A kind added after the file was saved may be missing. */
 function isItemSelection(value: unknown): value is ItemSelection {
   if (typeof value !== "object" || value === null) return false;
   const v: Record<string, unknown> = { ...value };
-  return kinds.every((kind) => isStringList(v[kind]));
+  return kinds.every((kind) => v[kind] === undefined || isStringList(v[kind]));
 }
 
 /** Whether a parsed JSON value has the shape of the saved state. */
@@ -70,7 +70,12 @@ export function loadState(file: string): State | undefined {
   if (!existsSync(file)) return undefined;
   const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
   if (!isState(parsed)) throw new Error(`Unrecognized state file: ${file}`);
-  return parsed;
+  return { ...parsed, items: withAllKinds(parsed.items), known: withAllKinds(parsed.known) };
+}
+
+/** Fills kinds that an older state file lacks with empty lists. */
+function withAllKinds(items: Partial<ItemSelection>): ItemSelection {
+  return { ...emptyItems(), ...items };
 }
 
 /** Writes the state file, creating its directory. */

@@ -110,6 +110,18 @@ export async function promptSelection(
     );
   }
 
+  const rules = catalog.filter((i) => i.kind === "rules");
+  if (rules.length && supported.has("rules")) {
+    items.rules = answer(
+      await multiselect({
+        message: "Rules (Claude only; each loads for matching files)",
+        options: rules.map((i) => ({ value: i.name, label: i.name, hint: short(i.description) })),
+        initialValues: current.items.rules.filter((n) => rules.some((r) => r.name === n)),
+        required: false,
+      }),
+    );
+  }
+
   const skills = catalog.filter((i): i is Extract<Item, { kind: "skills" }> => i.kind === "skills");
   if (skills.length && supported.has("skills")) {
     const groups: SkillGroup[] = ["Workflows", "Helpers", "Project profiles"];
