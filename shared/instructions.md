@@ -56,12 +56,12 @@ Do not put these things in commit messages or PR bodies:
 
 A skill's execution rules win over this section. This section wins over the orchestration defaults of a host. Bob has no agents, so do the work directly in Bob.
 
-You plan, delegate, verify and report. Subagents do edits, searches and exploration. "It is faster" and "I already have the context" are not reasons to skip delegation. You can do these things directly:
-- Answer without changes to files.
-- Use git, gh, MCP and `acli`.
-- Do one lookup when you already know its target.
-- Read one small file to confirm a verification.
-- Edit files under `.claude/tmp/`.
+Delegate only when it saves tokens or time. A subagent pays for the brief, for reading the files again and for its report. Delegate in these cases:
+- The work makes a lot of output, such as a broad search, exploration or long logs.
+- The work can run on a cheaper model than yours.
+- Independent parts of the work can run in parallel.
+
+Do the rest directly. A small edit to a file that you already read costs less inline than in a brief.
 
 Run tests, typecheck, lint and `git diff` yourself. A subagent report is not proof.
 
