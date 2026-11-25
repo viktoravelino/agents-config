@@ -1,7 +1,7 @@
 ---
 name: principal
 description: Audits, architecture decisions and hard trade-offs where a wrong call is expensive.
-model: fable
+model: opus
 effort: high
 disallowedTools: Agent
 ---
