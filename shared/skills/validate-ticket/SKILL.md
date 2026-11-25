@@ -174,3 +174,18 @@ a bug. If you skip it, the team builds the wrong thing well.
 Then report to the user: the verdict in one line, the findings, the scope, the evidence
 paths, any gap or risk, and the ticket hygiene suggestions. **Stop there.** `work-ticket`
 continues from `validation.json` when the user says to go.
+
+### Offer a fresh thread for the work
+
+When the verdict is `ready`, offer to run `work-ticket` in a new thread on a Sonnet model.
+The new thread reads `validation.json` and does not carry the history of the validation, so
+each turn costs less. Recommend it when this thread runs on Opus or its context is long.
+
+Start the new thread only when the user accepts. In T3 Code, call `t3_thread_launch` with:
+
+- `workspaceStrategy`: type `existing_worktree`, with the worktree path from `validation.json`.
+- `modelSelection`: the Sonnet model of the Claude provider, from `orchestrator_capabilities`.
+- `message`: `Run the work-ticket skill for <KEY>.`
+
+Mention the new thread by its link. Outside T3 Code, tell the user to open a new session
+on Sonnet in the worktree and run `work-ticket <KEY>`.

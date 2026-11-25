@@ -14,9 +14,13 @@ metadata:
 change and proves that it works. It is the second half of a pair. It does not repeat the
 first half, and that is deliberate.
 
-The normal case is the **same session** that ran the validation. The ticket, the code trace,
-the repro and the fix scope are already in context. Use them. Do not re-read the ticket,
-re-trace the code, or re-run the repro from scratch. That wastes the handoff.
+The work runs in one of two places:
+
+- The **same session** that ran the validation. The ticket, the code trace, the repro and
+  the fix scope are already in context. Use them. Do not re-read the ticket, re-trace the
+  code, or re-run the repro from scratch. That wastes the handoff.
+- A **fresh thread** that `validate-ticket` offered to save tokens. It does not carry the
+  validation history. `validation.json` is the brief. Start at **Cold session** below.
 
 A cost of the same session is that you inherit your own blind spots. For this reason the
 counsel review at step 5 is not optional.
@@ -40,7 +44,7 @@ has not moved. Then go.
 git rev-parse --show-toplevel && git branch --show-current && git status --short
 ```
 
-**Cold session** (a new session, or the validation has scrolled out of context): find the
+**Cold session** (a fresh thread, a new session, or the validation has scrolled out of context): find the
 worktree by branch, not by directory name. A T3 Code worktree is under `~/.t3/worktrees/`
 and has an opaque name. Match the ticket key in the branch column of `git worktree list`.
 Then read `.evidence/validation.json` there and treat it as the brief:
