@@ -1,7 +1,7 @@
 ---
 name: counsel-review
 description: Two fresh reviewers on two model families review a change with the rules of ponytail-review, and this session merges their findings. Use for "/counsel-review", "counsel review", "second opinion", "two reviewers", "review with another model".
-argument-hint: "[quick] [PR number | commit range | branch | files]"
+argument-hint: "[quick | full] [PR number | commit range | branch | files]"
 metadata:
   requires: [ponytail-review]
 ---
@@ -14,7 +14,9 @@ This skill launches two reviewers. The rules of the review live in `ponytail-rev
 
 - Review the target the user names: uncommitted changes, a branch, a PR number, a commit range or files.
 - Nothing named: review the uncommitted changes. If there are none, review the last commit.
-- Argument `quick`: use one reviewer, look for Bug and Risk only, and skip the second opinion.
+- Argument `quick`: use only the Sonnet reviewer, look for Bug and Risk only, and skip the second opinion.
+- Argument `full`: use both reviewers and all the checks of `ponytail-review`.
+- No mode named: count the changed lines in the scope with `git diff --shortstat`. Use `quick` below 50 lines and `full` otherwise. Tell the user which mode you picked.
 
 ## 2. Brief
 
@@ -37,8 +39,8 @@ Where the brief goes:
 
 Run two fresh read-only reviewers in parallel with the same brief:
 
-1. The model of the current thread.
-2. A model of a different family.
+1. A Claude Sonnet model. It is strong enough for a review and costs less than Opus.
+2. A non-Claude model.
 
 Follow [second-opinion.md](second-opinion.md) for model choice, launch, the read-only guard and failures.
 

@@ -5,15 +5,15 @@ The reviewers return findings in the `ponytail-review` output format as their fi
 
 ## Pick the two models
 
-1. Find the model of the current thread. The host reports it in the system prompt or the session status. Record the model id as the host gives it.
-2. Find the providers and models that the host offers now. Never use a model name from memory or from this file.
+The two reviewers are always the same pair, whatever the model of the current thread:
+
+- **Sonnet reviewer**: the newest Claude Sonnet model that the host lists.
+- **Other-family reviewer**: a non-Claude model through Copilot. The Copilot default can be a Claude model, so always name the model explicitly. Pick a mid-tier model of that family, not its flagship. A flagship at high effort can use most of a monthly Copilot quota.
+
+1. Find the providers and models that the host offers now. Never use a model name from memory or from this file.
    - In T3 Code: call the orchestrator capabilities tool (`orchestrator_capabilities`). It lists each provider, its models and its options.
    - Elsewhere: check which CLIs exist with `command -v claude copilot bob`. Use the model list that the host shows. If the host cannot list its models, ask the user once which model to use.
-3. Pick the other-family model by the family of the current model, not by the host:
-   - Current model is Claude (also in a Copilot thread): a non-Claude model through Copilot. The Copilot default can be a Claude model, so always name the model explicitly.
-   - Current model is not Claude: Claude. The Claude CLI default model is a correct choice.
-   - Pick the strongest model of that family that the host lists.
-4. If no other family is available, use the fallback in **When a reviewer fails**.
+2. If no non-Claude model is available, use the fallback in **When a reviewer fails**.
 
 ## Write the brief once
 
@@ -35,8 +35,8 @@ In T3 Code, the host does not matter. A Claude, Copilot or Bob thread uses the s
 
 1. Discover the models with `orchestrator_capabilities`, as **Pick the two models** describes.
 2. Launch both reviewers with `delegate_task` in the same turn. Set `mode: "async"`, `interactionMode: "plan"` and `role: "review"`. Give each reviewer a unique `clientRequestId` for each review round.
-3. **Same model**: omit `target`. The child inherits the provider and model of the thread.
-4. **Other family**: set `target.providerInstanceId` and `target.model` from the capabilities result, by the family rules in **Pick the two models**. Set high reasoning effort if the capabilities list it. Do not set `allow_all`.
+3. **Sonnet reviewer**: set `target.model` to the Sonnet model of the thread's provider. If that provider lists no Sonnet model, also set `target.providerInstanceId` to the Claude provider.
+4. **Other-family reviewer**: set `target.providerInstanceId` and `target.model` from the capabilities result, by the rules in **Pick the two models**. Use the default reasoning effort of the model. Do not set `allow_all`.
 5. Pass the brief text as the prompt. After its two closing lines, add: "Do not propose a plan and do not ask for approval. Return the findings directly as your final message."
 
 Each reviewer is a child thread that the user can open. Mention its link in the reply. Do not poll a reviewer. The host wakes the session when each reviewer finishes.
@@ -45,40 +45,23 @@ Each reviewer is a child thread that the user can open. Mention its link in the 
 
 Start both reviewers in the same turn. Do not poll a reviewer. Wait for the host to report that it finished.
 
-### Claude Code
+The other-family reviewer runs the Copilot CLI in the background on every host:
 
-- **Same model**: a read-only `Explore` agent (thoroughness: very thorough). Pass the brief as its prompt. Set the `model` override to the model of the current thread, because `Explore` can default to a smaller model. `Explore` has no `Write` or `Edit` tool, so it cannot save the review. It returns the findings as its final message.
-- **Other family**: run the Copilot CLI in the background:
+```sh
+copilot -p "$(cat "$BRIEF")" -s --model <non-Claude model> --allow-all-tools --deny-tool=write
+```
 
-  ```sh
-  copilot -p "$(cat "$BRIEF")" -s --model <non-Claude model> --allow-all-tools --deny-tool=write
-  ```
+The Sonnet reviewer depends on the host:
 
-### Copilot CLI
-
-- **Same model**: a fresh subagent on the current model, if the host offers one. Otherwise run a fresh process:
-
-  ```sh
-  copilot -p "$(cat "$BRIEF")" -s --model <current model> --allow-all-tools --deny-tool=write
-  ```
-
-- **Other family**: if the current model is Claude, run the same `copilot -p` command with a non-Claude model. Otherwise, use Claude. Run the Claude CLI:
+- **Claude Code**: a read-only `Explore` agent (thoroughness: very thorough). Pass the brief as its prompt. Set the `model` override to `sonnet`. `Explore` has no `Write` or `Edit` tool, so it cannot save the review. It returns the findings as its final message.
+- **Copilot CLI**: the same `copilot -p` command with the Sonnet model.
+- **Bob**: the Claude CLI:
 
   ```sh
-  claude -p "$(cat "$BRIEF")" \
+  claude -p "$(cat "$BRIEF")" --model sonnet \
     --allowedTools "Read Grep Glob Bash(git diff *) Bash(git log *) Bash(git show *)" \
     --disallowedTools "Edit Write NotebookEdit"
   ```
-
-### Bob
-
-- **Same model**: a fresh headless task. Use a read-only mode if Bob offers one (see `bob run --help` and the mode list):
-
-  ```sh
-  bob run --mode <read-only mode> "$(cat "$BRIEF")"
-  ```
-
-- **Other family**: Claude, with the same `claude -p` command as in the Copilot section.
 
 ## Read-only guard
 

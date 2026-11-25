@@ -106,7 +106,7 @@ with the matching rules in `evidence`.
 
 ## 5. Review
 
-- Run the `counsel-review` skill on the diff. Never run it inline.
+- Run the `counsel-review` skill with `full` on the diff, whatever its size. Never run it inline.
 - Give it the intent (what the ticket asks and what the diff claims) and the constraints (services and ports to leave alone).
 - Fix or dispute each finding. Record one outcome for each finding number: `fixed`, `disputed` with `file:line` evidence, or `acknowledged` with the reason. The hand-back uses these outcomes.
 - Never leave a Must fix `acknowledged`. Fix it, or dispute it with `file:line` evidence.
